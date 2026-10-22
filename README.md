@@ -47,8 +47,8 @@ Every `.age` file is plain [age](https://age-encryption.org) with an scrypt reci
 
 1. **Plug in the stick.** KleyKnox finds `kleyknox/` on any mounted volume (`/run/media`, `/media`, `/Volumes`, drive letters `D:`–`Z:`), or wherever `--dir` / `KLEYKNOX_DIR` points.
 2. **Type one passphrase.** It opens every entry.
-3. **Keys go into the agents, not onto the disk.** SSH keys are decrypted in memory and handed to `ssh-agent` over its socket (a named pipe on Windows), with a lifetime. GPG keys are imported still protected, and their passphrase is preset in `gpg-agent`.
-4. **When the time is up they lock again.** A systemd user timer, or a small detached process where systemd is missing, runs `kleyknox lock`.
+3. **Keys go into the agents, not onto the disk.** SSH keys are decrypted in memory and handed to `ssh-agent` over its socket (a named pipe on Windows), with a lifetime. GPG keys are imported only for the session, still protected, and their passphrase is preset in `gpg-agent`.
+4. **When the time is up they lock again.** A systemd user timer, or a small detached process where systemd is missing, runs `kleyknox lock`: SSH keys leave the agent, GPG passphrases are forgotten, and every GPG secret key KleyKnox imported is deleted from the keyring again (the public key stays). Keys that were already in your keyring are never touched.
 
 ## In the details
 
@@ -131,7 +131,7 @@ The stick is only as strong as its passphrase, because a thief can try passphras
 ## Limits, honestly
 
 - While keys are unlocked, any process running as you can use them through the agents. Keep `--ttl` short; for SSH, `--confirm` asks on every use (where the agent supports it).
-- GPG keys stay in the keyring of every PC you unlock them on, protected by a passphrase only the stick knows. Remove them with `gpg --delete-secret-keys` on machines that are not yours.
+- While a GPG key is unlocked, its secret part sits in the GnuPG keyring on disk, protected by a passphrase only the stick knows. If the PC dies before `lock`, the next `kleyknox unlock` or `lock` removes it.
 - On Windows, the OpenSSH agent keeps added keys in the registry (DPAPI-encrypted) until they are removed; KleyKnox removes them at expiry or on `kleyknox lock`.
 - Not audited. For high-stakes keys, prefer a hardware token.
 

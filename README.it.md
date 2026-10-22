@@ -47,8 +47,8 @@ Ogni file `.age` è [age](https://age-encryption.org) standard con destinatario 
 
 1. **Colleghi la chiavetta.** KleyKnox trova `kleyknox/` su qualsiasi volume montato (`/run/media`, `/media`, `/Volumes`, lettere di unità `D:`–`Z:`), oppure dove indicano `--dir` o `KLEYKNOX_DIR`.
 2. **Scrivi una sola passphrase.** Apre tutte le voci.
-3. **Le chiavi vanno negli agent, non sul disco.** Le chiavi SSH vengono decifrate in memoria e passate a `ssh-agent` tramite il suo socket (una named pipe su Windows), con una scadenza. Le chiavi GPG vengono importate ancora protette, e la loro passphrase viene preimpostata in `gpg-agent`.
-4. **Alla scadenza si richiudono.** Un timer utente di systemd, o un piccolo processo staccato dove systemd manca, esegue `kleyknox lock`.
+3. **Le chiavi vanno negli agent, non sul disco.** Le chiavi SSH vengono decifrate in memoria e passate a `ssh-agent` tramite il suo socket (una named pipe su Windows), con una scadenza. Le chiavi GPG vengono importate solo per la sessione, ancora protette, e la loro passphrase viene preimpostata in `gpg-agent`.
+4. **Alla scadenza si richiudono.** Un timer utente di systemd, o un piccolo processo staccato dove systemd manca, esegue `kleyknox lock`: le chiavi SSH escono dall'agent, le passphrase GPG vengono dimenticate, e ogni chiave segreta GPG importata da KleyKnox viene di nuovo cancellata dal keyring (la pubblica resta). Le chiavi che erano già nel tuo keyring non vengono mai toccate.
 
 ## Nei dettagli
 
@@ -131,7 +131,7 @@ La chiavetta è forte quanto la sua passphrase, perché un ladro può provare pa
 ## Limiti, onestamente
 
 - Mentre le chiavi sono aperte, qualsiasi processo che gira col tuo utente può usarle tramite gli agent. Tieni `--ttl` breve; per SSH, `--confirm` chiede conferma a ogni uso (dove l'agent lo supporta).
-- Le chiavi GPG restano nel keyring di ogni PC dove le sblocchi, protette da una passphrase che conosce solo la chiavetta. Sui PC non tuoi toglile con `gpg --delete-secret-keys`.
+- Mentre una chiave GPG è sbloccata, la sua parte segreta sta nel keyring di GnuPG su disco, protetta da una passphrase che conosce solo la chiavetta. Se il PC si spegne prima del `lock`, la toglie il successivo `kleyknox unlock` o `lock`.
 - Su Windows l'agent OpenSSH tiene le chiavi aggiunte nel registro (cifrate con DPAPI) finché non vengono tolte; KleyKnox le toglie alla scadenza o con `kleyknox lock`.
 - Nessun audit indipendente. Per chiavi di grande valore, meglio un token hardware.
 

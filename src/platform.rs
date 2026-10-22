@@ -13,6 +13,25 @@ use ssh_key::rand_core::{OsRng, RngCore};
 /// Per-user state that holds nothing secret (which keys are unlocked, the
 /// pending expiries). Linux: $XDG_RUNTIME_DIR, a tmpfs gone at logout.
 /// Windows: %LOCALAPPDATA%. Elsewhere: the per-user temporary directory.
+/// Where kleyknox keeps what must survive a reboot (nothing secret): the
+/// list of GPG keys it imported, so they can be removed again later.
+pub fn data_dir() -> Result<PathBuf> {
+    let home = || std::env::var_os("HOME").map(PathBuf::from).context("HOME is not set");
+    let base = if cfg!(windows) {
+        std::env::var_os("LOCALAPPDATA").map(PathBuf::from).context("LOCALAPPDATA is not set")?
+    } else if cfg!(target_os = "macos") {
+        home()?.join("Library").join("Application Support")
+    } else {
+        match std::env::var_os("XDG_DATA_HOME").filter(|d| !d.is_empty()) {
+            Some(dir) => PathBuf::from(dir),
+            None => home()?.join(".local").join("share"),
+        }
+    };
+    let dir = base.join("kleyknox");
+    fs::create_dir_all(&dir).with_context(|| format!("cannot create {}", dir.display()))?;
+    Ok(dir)
+}
+
 pub fn state_dir() -> Result<PathBuf> {
     let base = if cfg!(windows) {
         std::env::var_os("LOCALAPPDATA").map(PathBuf::from).context("LOCALAPPDATA is not set")?
@@ -73,7 +92,7 @@ fn systemd_timer(name: &str, secs: u32) -> Result<()> {
         // systemd otherwise allows a timer to fire up to a minute late.
         .arg("--timer-property=AccuracySec=1s");
     // The lock must reach the same agents and the same state as this unlock.
-    for var in ["GNUPGHOME", "SSH_AUTH_SOCK", "XDG_RUNTIME_DIR"] {
+    for var in ["GNUPGHOME", "SSH_AUTH_SOCK", "XDG_RUNTIME_DIR", "XDG_DATA_HOME"] {
         if let Some(value) = std::env::var_os(var) {
             cmd.arg(format!("--setenv={var}={}", value.to_string_lossy()));
         }

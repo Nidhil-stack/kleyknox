@@ -284,57 +284,166 @@ impl GpgAgent {
     }
 }
 
-/// Keygrips kleyknox has preset, so `lock` can clear them without the stick.
+/// A key kleyknox has unlocked: its keygrips, so `lock` can clear their
+/// passphrases without the stick, and its fingerprint.
+pub struct Loaded {
+    pub name: String,
+    pub fingerprint: Option<String>,
+    pub keygrips: Vec<String>,
+}
+
 /// Holds nothing secret (see platform::state_dir).
 fn state_path() -> Result<PathBuf> {
     Ok(platform::state_dir()?.join("gpg-loaded"))
 }
 
-pub fn loaded() -> Result<Vec<(String, Vec<String>)>> {
-    let Ok(text) = fs::read_to_string(state_path()?) else { return Ok(Vec::new()) };
-    Ok(text
-        .lines()
+/// One line per key: `name fpr:<fingerprint> <keygrip>...` (older lines
+/// have no `fpr:` token).
+fn parse_loaded(text: &str) -> Vec<Loaded> {
+    text.lines()
         .filter_map(|l| {
             let mut parts = l.split_whitespace();
             let name = parts.next()?.to_owned();
-            Some((name, parts.map(str::to_owned).collect()))
+            let mut entry = Loaded { name, fingerprint: None, keygrips: Vec::new() };
+            for p in parts {
+                match p.strip_prefix("fpr:") {
+                    Some(f) => entry.fingerprint = Some(f.to_owned()),
+                    None => entry.keygrips.push(p.to_owned()),
+                }
+            }
+            Some(entry)
         })
-        .collect())
+        .collect()
 }
 
-fn save_loaded(entries: &[(String, Vec<String>)]) -> Result<()> {
-    let path = state_path()?;
-    fs::create_dir_all(path.parent().unwrap())?;
-    let text: String = entries.iter().map(|(n, g)| format!("{n} {}\n", g.join(" "))).collect();
-    fs::write(path, text)?;
+pub fn loaded() -> Result<Vec<Loaded>> {
+    Ok(fs::read_to_string(state_path()?).map(|t| parse_loaded(&t)).unwrap_or_default())
+}
+
+fn save_loaded(entries: &[Loaded]) -> Result<()> {
+    let text: String = entries
+        .iter()
+        .map(|e| {
+            let fpr = e.fingerprint.as_deref().map(|f| format!(" fpr:{f}")).unwrap_or_default();
+            format!("{}{fpr} {}\n", e.name, e.keygrips.join(" "))
+        })
+        .collect();
+    fs::write(state_path()?, text)?;
     Ok(())
 }
 
-pub fn mark_loaded(name: &str, keygrips: &[String]) -> Result<()> {
+pub fn mark_loaded(name: &str, fingerprint: &str, keygrips: &[String]) -> Result<()> {
     let mut entries = loaded()?;
-    entries.retain(|(n, _)| n != name);
-    entries.push((name.to_owned(), keygrips.to_vec()));
+    entries.retain(|e| e.name != name);
+    entries.push(Loaded { name: name.to_owned(), fingerprint: Some(fingerprint.to_owned()), keygrips: keygrips.to_vec() });
     save_loaded(&entries)
 }
 
-/// Clears the cached passphrases of `name` (or of every loaded key) and
-/// returns the names cleared.
-pub fn lock(name: Option<&str>) -> Result<Vec<String>> {
+/* ---- keys kleyknox imported: removed from the keyring again at lock ---- */
+
+/// `<gnupg home>\t<fingerprint>` per line. Kept across reboots, so a key left
+/// behind by a crash or a power cut is still removed on the next run.
+fn imported_path() -> Result<PathBuf> {
+    Ok(platform::data_dir()?.join("imported-gpg-keys"))
+}
+
+fn gnupg_home() -> Result<String> {
+    gpgconf(&["--list-dirs", "homedir"])
+}
+
+fn imported() -> Result<Vec<(String, String)>> {
+    let Ok(text) = fs::read_to_string(imported_path()?) else { return Ok(Vec::new()) };
+    Ok(text
+        .lines()
+        .filter_map(|l| l.split_once('\t').map(|(h, f)| (h.to_owned(), f.to_owned())))
+        .collect())
+}
+
+fn save_imported(list: &[(String, String)]) -> Result<()> {
+    let text: String = list.iter().map(|(h, f)| format!("{h}\t{f}\n")).collect();
+    fs::write(imported_path()?, text)?;
+    Ok(())
+}
+
+/// Records that this key was not in the keyring before kleyknox put it there.
+pub fn remember_imported(fingerprint: &str) -> Result<()> {
+    let home = gnupg_home()?;
+    let mut list = imported()?;
+    if !list.iter().any(|(h, f)| *h == home && f == fingerprint) {
+        list.push((home, fingerprint.to_owned()));
+        save_imported(&list)?;
+    }
+    Ok(())
+}
+
+/// Deletes the secret part of `fingerprint` from the keyring; the public key stays.
+fn delete_secret(fingerprint: &str) -> Result<()> {
+    // Already gone (deleted by hand, say) counts as done.
+    if gpg(&["--with-colons", "--list-secret-keys", fingerprint], None).is_err() {
+        return Ok(());
+    }
+    gpg(&["--yes", "--delete-secret-keys", fingerprint], None)?;
+    Ok(())
+}
+
+/// Removes the secret keys kleyknox imported into this GnuPG home, except
+/// those in `keep`; returns their fingerprints.
+fn remove_imported(keep: &[String]) -> Result<Vec<String>> {
+    let home = gnupg_home()?;
+    let mut removed = Vec::new();
+    let mut left = Vec::new();
+    for (h, f) in imported()? {
+        if h != home || keep.contains(&f) {
+            left.push((h, f));
+            continue;
+        }
+        match delete_secret(&f) {
+            Ok(()) => removed.push(f),
+            Err(e) => {
+                eprintln!("gpg {f}: could not remove the secret key ({e:#}); kleyknox will try again");
+                left.push((h, f));
+            }
+        }
+    }
+    save_imported(&left)?;
+    Ok(removed)
+}
+
+/// Before an unlock: secret keys kleyknox imported but no longer has
+/// unlocked (left behind by a crash or a reboot) are removed.
+pub fn sweep_imported() -> Result<Vec<String>> {
+    let live: Vec<String> = loaded()?.into_iter().filter_map(|e| e.fingerprint).collect();
+    remove_imported(&live)
+}
+
+pub struct Locked {
+    pub name: String,
+    /// The secret key was removed from the keyring (kleyknox had imported it).
+    pub removed: bool,
+}
+
+/// Clears the cached passphrases of `name` (or of every loaded key), removes
+/// the secret keys kleyknox imported for them, and reports what it locked.
+pub fn lock(name: Option<&str>) -> Result<Vec<Locked>> {
     let entries = loaded()?;
-    let (gone, kept): (Vec<_>, Vec<_>) =
-        entries.into_iter().partition(|(n, _)| name.is_none_or(|t| t == n));
+    let (gone, kept): (Vec<_>, Vec<_>) = entries.into_iter().partition(|e| name.is_none_or(|t| t == e.name));
     if gone.is_empty() {
         return Ok(Vec::new());
     }
     let mut agent = GpgAgent::connect()?;
-    for (n, grips) in &gone {
-        for grip in grips {
+    for e in &gone {
+        for grip in &e.keygrips {
             agent.clear(grip)?;
         }
-        platform::cancel_expiry(n);
+        platform::cancel_expiry(&e.name);
     }
     save_loaded(&kept)?;
-    Ok(gone.into_iter().map(|(n, _)| n).collect())
+    let keep: Vec<String> = kept.iter().filter_map(|e| e.fingerprint.clone()).collect();
+    let removed = remove_imported(&keep)?;
+    Ok(gone
+        .into_iter()
+        .map(|e| Locked { removed: e.fingerprint.as_ref().is_some_and(|f| removed.contains(f)), name: e.name })
+        .collect())
 }
 
 fn hex(bytes: &[u8]) -> Zeroizing<String> {
@@ -348,6 +457,17 @@ fn hex(bytes: &[u8]) -> Zeroizing<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn loaded_state_old_and_new_lines() {
+        let entries = parse_loaded("mail fpr:ABCD G1 G2\nold G3\n");
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].name, "mail");
+        assert_eq!(entries[0].fingerprint.as_deref(), Some("ABCD"));
+        assert_eq!(entries[0].keygrips, ["G1", "G2"]);
+        assert_eq!(entries[1].fingerprint, None);
+        assert_eq!(entries[1].keygrips, ["G3"]);
+    }
 
     #[test]
     fn bundle_round_trip() {

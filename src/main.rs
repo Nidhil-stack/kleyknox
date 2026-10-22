@@ -205,7 +205,7 @@ fn run(cli: Cli) -> Result<()> {
                 Ok(mut a) => a.identities()?.into_iter().map(|i| i.comment).collect(),
                 Err(_) => Vec::new(),
             };
-            let gpg_loaded: Vec<String> = gpg::loaded()?.into_iter().map(|(n, _)| n).collect();
+            let gpg_loaded: Vec<String> = gpg::loaded()?.into_iter().map(|e| e.name).collect();
             println!("vault: {}", dir.display());
             for item in vault::items(&dir)? {
                 let unlocked = match item.kind {
@@ -236,6 +236,14 @@ fn unlock(dir: Option<PathBuf>, name: Option<String>, ttl: &str, confirm: bool) 
     }
 
     let pass = read_passphrase("KleyKnox passphrase: ", false)?;
+    // Keys a crash or a reboot left in the keyring go before anything is unlocked.
+    if items.iter().any(|i| i.kind == Kind::Gpg) {
+        match gpg::sweep_imported() {
+            Ok(gone) if !gone.is_empty() => println!("gpg: removed {} secret key(s) left behind by an earlier session", gone.len()),
+            Ok(_) => {}
+            Err(e) => eprintln!("gpg: could not check for keys left behind ({e:#})"),
+        }
+    }
     let until = match lifetime {
         Some(s) => format!("for {}", ttl_label(s)),
         None => "until `kleyknox lock`".into(),
@@ -302,7 +310,8 @@ fn unlock_gpg(dir: &Path, name: &str, pass: &str, lifetime: Option<u32>) -> Resu
     let text = vault::load(dir, &Kind::Gpg.stem(name), secret(pass))?;
     let bundle = gpg::Bundle::decode(&text)?;
     if gpg::ensure_imported(&bundle)? {
-        println!("gpg {name}: secret key {} imported into this keyring (still passphrase-protected)", bundle.fingerprint);
+        gpg::remember_imported(&bundle.fingerprint)?;
+        println!("gpg {name}: secret key imported for now; `kleyknox lock` or the expiry removes it again");
     }
     if !bundle.passphrase.is_empty() {
         if gpg::ensure_preset_allowed()? {
@@ -313,7 +322,7 @@ fn unlock_gpg(dir: &Path, name: &str, pass: &str, lifetime: Option<u32>) -> Resu
             agent.preset(grip, &bundle.passphrase)?;
         }
     }
-    gpg::mark_loaded(name, &bundle.keygrips)?;
+    gpg::mark_loaded(name, &bundle.fingerprint, &bundle.keygrips)?;
     if let Some(secs) = lifetime
         && let Err(e) = platform::schedule_expiry(name, secs)
     {
@@ -328,8 +337,9 @@ fn lock(name: Option<String>) -> Result<()> {
     }
     // GPG first: the expiry timer runs this without an ssh-agent in its environment.
     let mut done = 0;
-    for n in gpg::lock(name.as_deref())? {
-        println!("locked gpg {n}");
+    for l in gpg::lock(name.as_deref())? {
+        let removed = if l.removed { " (secret key removed from this keyring)" } else { "" };
+        println!("locked gpg {}{removed}", l.name);
         done += 1;
     }
 
