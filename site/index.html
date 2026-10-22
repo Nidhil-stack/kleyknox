@@ -3,9 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#eef1f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#12161b" media="(prefers-color-scheme: dark)">
   <title>KleyKnox — le tue chiavi, in una chiavetta</title>
   <meta name="description" content="KleyKnox tiene le chiavi SSH e GPG cifrate su una chiavetta USB e le sblocca tutte con una sola passphrase, per il tempo che scegli.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="alternate" hreflang="it" href="./">
+  <link rel="alternate" hreflang="en" href="en/">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -54,6 +59,7 @@
     <a class="link" href="#comandi">Comandi</a>
     <a class="link" href="#passphrase">Passphrase</a>
   </nav>
+  <a class="lang link" href="en/" hreflang="en" lang="en">English</a>
   <a class="button key-bit" href="#installa">Installa</a>
 </header>
 
@@ -160,25 +166,25 @@ b1 0d 6a f3 82 47 ec 19 5f a0 3b d8 76 2c e9 41</pre>
     </div>
   </section>
 
-  <!-- 4. Features: close-ups of the real interface, CLI and AegisGPG. -->
+  <!-- 4. Features: close-ups of the real interface. -->
   <section class="board" id="dettagli" aria-labelledby="dettagli-title">
     <div class="tile t-head"><h2 id="dettagli-title">Nei dettagli</h2></div>
 
-    <div class="tile t-aegis">
-      <div class="zoom aegis" data-ui>
-        <p class="aegis-title">Unlock with KleyKnox</p>
-        <p class="aegis-path"><samp>/run/media/nicholas/STICK/kleyknox</samp></p>
-        <span class="aegis-input">••••••••••••••••</span>
-        <span class="aegis-label">Keep unlocked for</span>
-        <span class="aegis-select">2 hours ▾</span>
-        <span class="aegis-button">Unlock</span>
+    <div class="tile t-lock">
+      <div class="zoom lockterm" data-ui>
+<pre><samp><span class="t-dim">$</span> kleyknox lock
+locked gpg mail
+locked ssh personale
+locked gpg vecchia
+<span class="t-dim">$</span> ssh-add -l
+The agent has no identities.</samp></pre>
       </div>
-      <p class="cap"><strong>Dentro AegisGPG</strong>La finestra della passphrase offre KleyKnox.</p>
+      <p class="cap"><strong>Chiudi quando vuoi</strong><code>kleyknox lock</code> richiude tutto in un colpo.</p>
     </div>
 
-    <div class="tile t-toggle">
-      <div class="zoom toggle-ui" data-ui><span class="switch" aria-hidden="true"><span></span></span><span class="toggle-label">Use KleyKnox<br>when plugged in</span></div>
-      <p class="cap"><strong>Di default</strong>Quando la chiavetta c'è, viene prima lei.</p>
+    <div class="tile t-os">
+      <div class="zoom os-ui" data-ui><samp>kleyknox-x86_64-linux.tar.gz</samp><samp>kleyknox-x86_64-windows.zip</samp><samp>kleyknox-aarch64-macos.tar.gz</samp></div>
+      <p class="cap"><strong>Ovunque</strong>Binari per Linux, Windows e macOS.</p>
     </div>
 
     <div class="tile t-scrypt">
@@ -230,7 +236,7 @@ b1 0d 6a f3 82 47 ec 19 5f a0 3b d8 76 2c e9 41</pre>
     <div class="mark"><span>OpenSSH</span><p>ssh-agent, chiavi Ed25519</p></div>
     <div class="mark"><span>GnuPG</span><p>gpg-agent, chiavi OpenPGP</p></div>
     <div class="mark"><span>age</span><p>cifratura con scrypt</p></div>
-    <div class="mark"><span>AegisGPG</span><p>sblocco dalla finestra</p></div>
+    <div class="mark"><span>gpg4win</span><p>GnuPG su Windows</p></div>
     <div class="mark"><span>Thunderbird</span><p>tramite GnuPG</p></div>
     <div class="mark"><span>systemd</span><p>il timer che richiude</p></div>
   </section>
@@ -274,7 +280,7 @@ b1 0d 6a f3 82 47 ec 19 5f a0 3b d8 76 2c e9 41</pre>
 cd kleyknox &amp;&amp; cargo install --path .</code></pre>
       </div>
 
-      <p class="sheet-hours">Linux con OpenSSH 8.2 e GnuPG 2.4<br>systemd per la scadenza delle chiavi GPG</p>
+      <p class="sheet-hours">Linux, Windows o macOS · OpenSSH 8.2 e GnuPG 2.4<br>I binari sono nella pagina delle release</p>
     </div>
   </section>
 
@@ -315,7 +321,7 @@ cd kleyknox &amp;&amp; cargo install --path .</code></pre>
       <a class="link" href="https://github.com/Nidhil-stack/kleyknox">Codice su GitHub</a>
     </nav>
     <nav aria-label="Progetti collegati">
-      <a class="link" href="https://github.com/EddyDevProject/AegisGPG">AegisGPG</a>
+      <a class="link" href="https://www.openssh.com">OpenSSH</a>
       <a class="link" href="https://age-encryption.org">age</a>
       <a class="link" href="https://gnupg.org">GnuPG</a>
     </nav>

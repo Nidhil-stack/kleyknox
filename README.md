@@ -2,6 +2,8 @@
   <img src="docs/img/tower.svg" width="72" alt="KleyKnox tower-key">
 </p>
 
+<p align="center"><strong>English</strong> · <a href="README.it.md">Italiano</a></p>
+
 <h1 align="center">KleyKnox</h1>
 
 <p align="center">
@@ -13,22 +15,22 @@
   <a href="https://github.com/Nidhil-stack/kleyknox/actions/workflows/ci.yml"><img src="https://github.com/Nidhil-stack/kleyknox/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/Linux%20%C2%B7%20Windows%20%C2%B7%20macOS-1e232b?style=flat-square" alt="Linux, Windows, macOS">
   <img src="https://img.shields.io/badge/license-GPL--3.0-2bb3c0?style=flat-square" alt="GPL-3.0">
-  <a href="https://nidhil-stack.github.io/kleyknox/"><img src="https://img.shields.io/badge/site-kleyknox-167780?style=flat-square" alt="Website"></a>
+  <a href="https://nidhil-stack.github.io/kleyknox/en/"><img src="https://img.shields.io/badge/site-kleyknox-167780?style=flat-square" alt="Website"></a>
 </p>
 
-![KleyKnox: le tue chiavi, in una chiavetta](docs/img/top.jpg)
+![KleyKnox: your keys, on one stick](docs/img/en/top.jpg)
 
 ```console
 $ kleyknox unlock --ttl 2h
 KleyKnox passphrase: ••••••••••••••••••••••
 gpg mail      unlocked for 2h
-ssh personale unlocked for 2h
-gpg vecchia   unlocked for 2h
+ssh personal  unlocked for 2h
+gpg old       unlocked for 2h
 ```
 
 ## What is on the stick
 
-![The kleyknox/ folder: one .age file per key, beside its public half](docs/img/chiavetta.jpg)
+![The kleyknox/ folder: one .age file per key, beside its public half](docs/img/en/stick.jpg)
 
 A `kleyknox/` folder, and nothing in it is readable without the passphrase:
 
@@ -37,11 +39,11 @@ A `kleyknox/` folder, and nothing in it is readable without the passphrase:
 | `<name>.age` + `<name>.pub` | An OpenSSH Ed25519 private key, encrypted; its public key in the clear |
 | `<name>.gpg.age` + `<name>.asc` | A GPG secret key **and** the random passphrase that protects it, encrypted together; the public key |
 
-Every `.age` file is plain [age](https://age-encryption.org) with an scrypt recipient at a fixed cost of 2<sup>20</sup> (about 1.3 s per guess on a laptop), so it opens on any PC, and without KleyKnox: `age -d personale.age`.
+Every `.age` file is plain [age](https://age-encryption.org) with an scrypt recipient at a fixed cost of 2<sup>20</sup> (about 1.3 s per guess on a laptop), so it opens on any PC, and without KleyKnox: `age -d personal.age`.
 
 ## How it works
 
-![Four moments: plugged in, one passphrase, keys in the agents, locked again](docs/img/come.jpg)
+![Four moments: plugged in, one passphrase, keys in the agents, locked again](docs/img/en/how.jpg)
 
 1. **Plug in the stick.** KleyKnox finds `kleyknox/` on any mounted volume (`/run/media`, `/media`, `/Volumes`, drive letters `D:`–`Z:`), or wherever `--dir` / `KLEYKNOX_DIR` points.
 2. **Type one passphrase.** It opens every entry.
@@ -50,16 +52,17 @@ Every `.age` file is plain [age](https://age-encryption.org) with an scrypt reci
 
 ## In the details
 
-![Close-ups: AegisGPG's unlock dialog, the default toggle, scrypt 2^20, the 12-character minimum](docs/img/dettagli.jpg)
+![Close-ups: kleyknox lock, the release binaries, scrypt 2^20, the 12-character minimum](docs/img/en/details.jpg)
 
-- **Inside [AegisGPG](https://github.com/EddyDevProject/AegisGPG):** the passphrase dialog can take the KleyKnox passphrase instead, and do so by default whenever the stick is plugged in.
+- **Lock any time:** `kleyknox lock` closes every key at once, before the time is up.
+- **Everywhere:** binaries for Linux, Windows and macOS, the same stick on all three.
 - **Timed:** `--ttl 15m`, `1h`, `2h` (default), `8h`, or `none`.
 - **No shortcuts:** passphrases under 12 characters are refused. Anyone holding the stick can guess offline, forever.
 - **Modern keys:** Ed25519 for SSH, Ed25519 + Cv25519 for GPG.
 
 ## The commands
 
-![The commands, printed like a menu](docs/img/comandi.jpg)
+![The commands, printed like a menu](docs/img/en/commands.jpg)
 
 | | Command | |
 | --- | --- | --- |
@@ -121,9 +124,9 @@ Or take a binary for Linux, Windows or macOS from the [releases](https://github.
 
 ## How much does the passphrase hold?
 
-![A combination padlock: ten thousand combinations](docs/img/passphrase.jpg)
+![A combination padlock: ten thousand combinations](docs/img/en/passphrase.jpg)
 
-The stick is only as strong as its passphrase, because a thief can try passphrases offline. Each guess costs one scrypt run at 2<sup>20</sup> (1 GiB of memory). The [site](https://nidhil-stack.github.io/kleyknox/#passphrase) estimates how long yours would hold against 10,000 guesses a second, in your browser, without sending it anywhere. Five or six random words is a good answer.
+The stick is only as strong as its passphrase, because a thief can try passphrases offline. Each guess costs one scrypt run at 2<sup>20</sup> (1 GiB of memory). The [site](https://nidhil-stack.github.io/kleyknox/en/#passphrase) estimates how long yours would hold against 10,000 guesses a second, in your browser, without sending it anywhere. Five or six random words is a good answer.
 
 ## Limits, honestly
 
@@ -134,7 +137,7 @@ The stick is only as strong as its passphrase, because a thief can try passphras
 
 ## The name
 
-![Kley and Knox: a key and a vault](docs/img/nome.jpg)
+![Kley and Knox: a key and a vault](docs/img/en/name.jpg)
 
 **Kley** is κλείς, the Greek key. **Knox** is Fort Knox, the vault where the United States has kept its gold since 1937. The key goes in the vault, and the vault goes in your pocket.
 

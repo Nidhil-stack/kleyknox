@@ -26,11 +26,35 @@ const FILES = [
     fact: "La chiave pubblica GPG, da dare a chi deve scriverti cifrato.",
   },
 ];
+const FILES_EN = [
+  {
+    name: "personal.age", size: "581 bytes",
+    body: "age-encryption.org/v1\n-> scrypt iY2iEM6ALAVPbQ84Ro0AkA 20\nnW1Lq0b2kR9x3cXvT6pYQ8hZ0fJmA4sDk7GuEo5wIr\n--- 4bWq0tYk2mPz8xXc1vN6sJ3dL9hR5fQ0gA7eKuYo\n7c 2f 91 e4 0b a8 55 3d c1 9e 6f 02 b7 48 d3 1a\ne0 64 af 13 78 c2 5b 9d 04 f6 21 8e 37 ca 90 5e\nb1 0d 6a f3 82 47 ec 19 5f a0 3b d8 76 2c e9 41",
+    fact: 'The SSH key, encrypted with scrypt at 2<sup>20</sup>. It opens without KleyKnox too: <code>age -d personal.age</code>.',
+  },
+  {
+    name: "personal.pub", size: "95 bytes",
+    body: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAcU1xqZph7w1y4kmFf9Ey6UV7s2X8xcQsB7u88ttT+H kleyknox:personal",
+    fact: "The public SSH key, in the clear: the one you put on servers, in <code>authorized_keys</code>.",
+  },
+  {
+    name: "mail.gpg.age", size: "1.1 KB",
+    body: "age-encryption.org/v1\n-> scrypt Qm8dXz1kP0aW7cRt4yLb2A 20\nT3vHq9mZx0bK1cWd8eYf2gRn4hSj6iUk7oLp5aMs9uB\n--- Zk2Pq8wR1tYx4vN7mB0cL3dF6gH9jS5aE2uIo8kT\n3a 9f 0c e7 52 b8 14 d6 6e 01 c9 a4 3b 77 f2 08\n5d c3 2e 90 18 af 64 bb 07 e1 4c 39 d2 86 0f 7a",
+    fact: "The GPG key together with its random GPG passphrase: only the stick knows it.",
+  },
+  {
+    name: "mail.asc", size: "653 bytes",
+    body: "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nmDMEZxx6cBYJKwYBBAHaRw8BAQdA9Qf0dS3mWkH2pZ8\ntLvB6cR1yX4nE7aK0uJ5oP3iT2gbtCRQcm92YSBLbGV5\nS25veCA8cHJvdmFAZXhhbXBsZS5vcmc+iJMEExYKADsW\n=kLyK\n-----END PGP PUBLIC KEY BLOCK-----",
+    fact: "The public GPG key, for whoever needs to write to you encrypted.",
+  },
+];
+const EN = document.documentElement.lang === "en";
+const SHOWN = EN ? FILES_EN : FILES;
 
 const tabs = [...document.querySelectorAll(".files [role=tab]")];
 const fileBox = document.querySelector(".file");
 const show = (i) => {
-  const f = FILES[i];
+  const f = SHOWN[i];
   tabs.forEach((t, j) => t.setAttribute("aria-selected", String(j === i)));
   const swap = () => {
     document.getElementById("file-name").textContent = f.name;
@@ -102,30 +126,36 @@ const bitsOf = (p) => {
   const distinct = new Set(p).size;
   return Math.min(p.length, distinct + (p.length - distinct) * 0.25) * Math.log2(pool || 1);
 };
+const WORDS = EN
+  ? { lt1: "less than a second", min: "minutes", h: "hours", d: "days", y: "years", ky: "thousand years", my: "million years", inf: "longer than the age of the universe" }
+  : { lt1: "meno di un secondo", min: "minuti", h: "ore", d: "giorni", y: "anni", ky: "mila anni", my: "milioni di anni", inf: "più dell'età dell'universo" };
 const span = (s) => {
   const year = 3600 * 24 * 365;
-  if (s < 1) return "meno di un secondo";
-  if (s < 3600) return `${Math.ceil(s / 60)} minuti`;
-  if (s < 86400) return `${Math.round(s / 3600)} ore`;
-  if (s < year) return `${Math.round(s / 86400)} giorni`;
+  if (s < 1) return WORDS.lt1;
+  if (s < 3600) return `${Math.ceil(s / 60)} ${WORDS.min}`;
+  if (s < 86400) return `${Math.round(s / 3600)} ${WORDS.h}`;
+  if (s < year) return `${Math.round(s / 86400)} ${WORDS.d}`;
   const y = s / year;
-  if (y < 1e3) return `${Math.round(y)} anni`;
-  if (y < 1e6) return `${Math.round(y / 1e3)} mila anni`;
-  if (y < 1e9) return `${Math.round(y / 1e6)} milioni di anni`;
-  return "più dell'età dell'universo";
+  if (y < 1e3) return `${Math.round(y)} ${WORDS.y}`;
+  if (y < 1e6) return `${Math.round(y / 1e3)} ${WORDS.ky}`;
+  if (y < 1e9) return `${Math.round(y / 1e6)} ${WORDS.my}`;
+  return WORDS.inf;
 };
 const probe = document.getElementById("probe");
 const field = document.getElementById("probe-input");
 const out = document.getElementById("probe-result");
 const measure = () => {
   const p = field.value;
-  if (!p) { out.textContent = "Scrivi una passphrase: il conto lo fa questa pagina, e non la invia a nessuno."; return; }
+  if (!p) { out.textContent = EN ? "Type a passphrase: this page does the maths and sends it nowhere." : "Scrivi una passphrase: il conto lo fa questa pagina, e non la invia a nessuno."; return; }
   const bits = bitsOf(p);
   const half = Math.pow(2, bits - 1) / RATE; // on average the right guess comes half way
   const short = p.length < MIN;
-  out.innerHTML =
-    `Circa <strong>${Math.round(bits)} bit</strong>: in media servirebbero <strong class="${half > 3.15e9 ? "good" : "bad"}">${span(half)}</strong>.` +
-    (short ? ` <span class="bad">KleyKnox la rifiuterebbe: ha ${p.length} caratteri, ne servono almeno ${MIN}.</span>` : "");
+  const verdict = `class="${half > 3.15e9 ? "good" : "bad"}"`;
+  out.innerHTML = EN
+    ? `About <strong>${Math.round(bits)} bits</strong>: on average it would take <strong ${verdict}>${span(half)}</strong>.` +
+      (short ? ` <span class="bad">KleyKnox would refuse it: ${p.length} characters, at least ${MIN} needed.</span>` : "")
+    : `Circa <strong>${Math.round(bits)} bit</strong>: in media servirebbero <strong ${verdict}>${span(half)}</strong>.` +
+      (short ? ` <span class="bad">KleyKnox la rifiuterebbe: ha ${p.length} caratteri, ne servono almeno ${MIN}.</span>` : "");
 };
 probe.addEventListener("submit", (e) => { e.preventDefault(); measure(); });
 field.addEventListener("input", measure);
