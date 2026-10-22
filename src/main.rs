@@ -16,15 +16,15 @@ use zeroize::Zeroizing;
 use agent::Agent;
 use vault::Kind;
 
-/// Comment prefix that marks agent identities loaded by keystick.
-const COMMENT_PREFIX: &str = "keystick:";
+/// Comment prefix that marks agent identities loaded by kleyknox.
+const COMMENT_PREFIX: &str = "kleyknox:";
 const MIN_PASSPHRASE_CHARS: usize = 12;
 
 #[derive(Parser)]
 #[command(version, about = "SSH and GPG keys kept encrypted on a USB stick, unlocked with one passphrase")]
 struct Cli {
-    /// Vault directory (default: the keystick/ directory on the mounted stick)
-    #[arg(long, global = true, env = "KEYSTICK_DIR")]
+    /// Vault directory (default: the kleyknox/ directory on the mounted stick)
+    #[arg(long, global = true, env = "KLEYKNOX_DIR")]
     dir: Option<PathBuf>,
 
     #[command(subcommand)]
@@ -33,7 +33,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Create a keystick/ directory on a mounted volume
+    /// Create a kleyknox/ directory on a mounted volume
     Init {
         /// Mount point of the stick
         mountpoint: PathBuf,
@@ -82,7 +82,7 @@ enum Command {
     },
     /// Lock keys again: remove SSH keys from ssh-agent, forget GPG passphrases
     Lock {
-        /// Entry to lock (default: everything keystick unlocked)
+        /// Entry to lock (default: everything kleyknox unlocked)
         name: Option<String>,
     },
     /// Show the vault's entries and which are unlocked
@@ -91,7 +91,7 @@ enum Command {
 
 fn main() {
     if let Err(e) = run(Cli::parse()) {
-        eprintln!("keystick: {e:#}");
+        eprintln!("kleyknox: {e:#}");
         std::process::exit(1);
     }
 }
@@ -183,17 +183,17 @@ fn unlock(dir: Option<PathBuf>, name: Option<String>, ttl: &str, confirm: bool) 
         vault::check_name(n)?;
         items.retain(|i| &i.name == n);
         if items.is_empty() {
-            bail!("no entry named {n} (see `keystick list`)");
+            bail!("no entry named {n} (see `kleyknox list`)");
         }
     }
     if items.is_empty() {
-        bail!("the vault is empty; add a key with `keystick new` or `keystick gpg-new`");
+        bail!("the vault is empty; add a key with `kleyknox new` or `kleyknox gpg-new`");
     }
 
-    let pass = read_passphrase("Keystick passphrase: ", false)?;
+    let pass = read_passphrase("KleyKnox passphrase: ", false)?;
     let until = match lifetime {
         Some(s) => format!("for {}", ttl_label(s)),
-        None => "until `keystick lock`".into(),
+        None => "until `kleyknox lock`".into(),
     };
     let mut ssh_agent = None;
     let mut failed = 0;
@@ -255,7 +255,7 @@ fn unlock_gpg(dir: &Path, name: &str, pass: &str, lifetime: Option<u32>) -> Resu
     gpg::mark_loaded(name, &bundle.keygrips)?;
     if let Some(secs) = lifetime {
         if let Err(e) = gpg::schedule_expiry(name, secs) {
-            eprintln!("gpg {name}: will NOT lock itself ({e:#}); run `keystick lock` when done");
+            eprintln!("gpg {name}: will NOT lock itself ({e:#}); run `kleyknox lock` when done");
         }
     }
     Ok(())
@@ -358,7 +358,7 @@ fn read_passphrase(prompt: &str, allow_empty: bool) -> Result<Zeroizing<String>>
 }
 
 fn read_new_passphrase() -> Result<Zeroizing<String>> {
-    let first = read_passphrase("New keystick passphrase (use the same for every entry): ", false)?;
+    let first = read_passphrase("New kleyknox passphrase (use the same for every entry): ", false)?;
     if first.chars().count() < MIN_PASSPHRASE_CHARS {
         bail!(
             "use at least {MIN_PASSPHRASE_CHARS} characters: anyone holding the stick can guess offline, forever"

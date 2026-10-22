@@ -1,7 +1,7 @@
 //! GnuPG side. A vault entry holds a secret key exported from gpg together
 //! with the passphrase that protects it. Unlocking imports the key (still
 //! protected) when this machine lacks it, then presets that passphrase in
-//! gpg-agent, so the single keystick passphrase unlocks GPG too. The key on
+//! gpg-agent, so the single kleyknox passphrase unlocks GPG too. The key on
 //! the PC's disk stays useless without the stick.
 
 use std::fs;
@@ -14,7 +14,7 @@ use anyhow::{Context, Result, bail};
 use ssh_key::rand_core::{OsRng, RngCore};
 use zeroize::Zeroizing;
 
-const BUNDLE_MAGIC: &str = "keystick-gpg-v1";
+const BUNDLE_MAGIC: &str = "kleyknox-gpg-v1";
 
 pub struct Bundle {
     pub fingerprint: String,
@@ -38,7 +38,7 @@ impl Bundle {
         let (header, armor) = text.split_once("\n\n").context("malformed GPG entry")?;
         let mut lines = header.lines();
         if lines.next() != Some(BUNDLE_MAGIC) {
-            bail!("not a keystick GPG entry");
+            bail!("not a kleyknox GPG entry");
         }
         let mut fingerprint = None;
         let mut keygrips = Vec::new();
@@ -195,7 +195,7 @@ pub fn ensure_preset_allowed() -> Result<bool> {
     if !current.is_empty() && !current.ends_with('\n') {
         f.write_all(b"\n")?;
     }
-    f.write_all(b"# added by keystick: lets it hand the passphrase to gpg-agent\nallow-preset-passphrase\n")?;
+    f.write_all(b"# added by kleyknox: lets it hand the passphrase to gpg-agent\nallow-preset-passphrase\n")?;
     gpgconf(&["--reload", "gpg-agent"])?;
     Ok(true)
 }
@@ -249,11 +249,11 @@ impl GpgAgent {
     }
 }
 
-/// Keygrips keystick has preset, so `lock` can clear them without the stick.
+/// Keygrips kleyknox has preset, so `lock` can clear them without the stick.
 /// Lives in $XDG_RUNTIME_DIR (tmpfs): gone at logout, holds nothing secret.
 fn state_path() -> Result<PathBuf> {
     let runtime = std::env::var_os("XDG_RUNTIME_DIR").context("XDG_RUNTIME_DIR is not set")?;
-    Ok(PathBuf::from(runtime).join("keystick").join("gpg-loaded"))
+    Ok(PathBuf::from(runtime).join("kleyknox").join("gpg-loaded"))
 }
 
 pub fn loaded() -> Result<Vec<(String, Vec<String>)>> {
@@ -304,11 +304,11 @@ pub fn lock(name: Option<&str>) -> Result<Vec<String>> {
 }
 
 fn timer_unit(name: &str) -> String {
-    format!("keystick-expire-{name}")
+    format!("kleyknox-expire-{name}")
 }
 
 /// gpg-agent has no expiry for preset passphrases, so a transient systemd
-/// timer runs `keystick lock <name>` when the TTL is up.
+/// timer runs `kleyknox lock <name>` when the TTL is up.
 pub fn schedule_expiry(name: &str, secs: u32) -> Result<()> {
     cancel_expiry(name);
     let exe = std::env::current_exe()?;

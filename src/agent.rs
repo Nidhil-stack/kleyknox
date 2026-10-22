@@ -1,5 +1,5 @@
 //! Minimal ssh-agent client (draft-miller-ssh-agent): just the messages
-//! keystick needs, so the decrypted key goes straight from our memory into
+//! kleyknox needs, so the decrypted key goes straight from our memory into
 //! the agent's without touching disk or another process.
 
 use std::io::{Read, Write};

@@ -1,5 +1,5 @@
 [package]
-name = "keystick"
+name = "kleyknox"
 version = "0.1.0"
 edition = "2024"
 description = "SSH keys kept encrypted on a USB stick, decrypted only into ssh-agent"

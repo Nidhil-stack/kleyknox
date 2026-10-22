@@ -1,5 +1,5 @@
-//! The `keystick/` directory on the USB stick, every secret encrypted to the
-//! same passphrase (age + scrypt) and readable without keystick (`age -d`):
+//! The `kleyknox/` directory on the USB stick, every secret encrypted to the
+//! same passphrase (age + scrypt) and readable without kleyknox (`age -d`):
 //! - `<name>.age`: an OpenSSH private key, with `<name>.pub` beside it
 //! - `<name>.gpg.age`: a GPG entry (see gpg.rs), with `<name>.asc` beside it
 
@@ -11,10 +11,17 @@ use age::secrecy::SecretString;
 use anyhow::{Context, Result, bail};
 use zeroize::Zeroizing;
 
-pub const DIR_NAME: &str = "keystick";
+pub const DIR_NAME: &str = "kleyknox";
+
+/// scrypt cost (log2 N) for new entries: about 1 GiB and a second or two to
+/// open. Fixed rather than calibrated to this PC, so a vault written on a fast
+/// machine still opens on a slow one.
+const WORK_FACTOR: u8 = 20;
+/// Highest cost accepted when opening, so a tampered file cannot demand hours.
+pub const MAX_WORK_FACTOR: u8 = 22;
 
 /// Finds the vault: an explicit path wins, otherwise every mounted removable
-/// volume is searched for a `keystick/` directory.
+/// volume is searched for a `kleyknox/` directory.
 pub fn locate(explicit: Option<PathBuf>) -> Result<PathBuf> {
     if let Some(dir) = explicit {
         if !dir.is_dir() {
@@ -123,7 +130,9 @@ pub fn store(
     }
 
     let mut ciphertext = Vec::new();
-    let encryptor = age::Encryptor::with_user_passphrase(passphrase);
+    let mut recipient = age::scrypt::Recipient::new(passphrase);
+    recipient.set_work_factor(WORK_FACTOR);
+    let encryptor = age::Encryptor::with_recipients(std::iter::once(&recipient as &dyn age::Recipient))?;
     let mut writer = encryptor.wrap_output(&mut ciphertext)?;
     writer.write_all(secret)?;
     writer.finish()?;
@@ -142,7 +151,8 @@ pub fn load(dir: &Path, stem: &str, passphrase: SecretString) -> Result<Zeroizin
     if !decryptor.is_scrypt() {
         bail!("{} is not passphrase-encrypted", age_path.display());
     }
-    let identity = age::scrypt::Identity::new(passphrase);
+    let mut identity = age::scrypt::Identity::new(passphrase);
+    identity.set_max_work_factor(MAX_WORK_FACTOR);
     let mut reader = decryptor
         .decrypt(std::iter::once(&identity as &dyn age::Identity))
         .map_err(|e| match e {

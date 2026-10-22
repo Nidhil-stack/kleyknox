@@ -1,39 +1,39 @@
-# keystick
+# kleyknox
 
 SSH and GPG keys kept encrypted on a USB stick, all unlocked with one passphrase, for a limited time.
 
-On the stick, in `keystick/`, every secret is encrypted to the same passphrase (age, scrypt):
+On the stick, in `kleyknox/`, every secret is encrypted to the same passphrase (age, scrypt):
 
 | File | Contents |
 | --- | --- |
 | `<name>.age` + `<name>.pub` | OpenSSH Ed25519 private key + public key |
 | `<name>.gpg.age` + `<name>.asc` | GPG secret key export + the passphrase protecting it, and the public key |
 
-`keystick unlock` asks the passphrase once and then does two things:
+`kleyknox unlock` asks the passphrase once and then does two things:
 
 - **SSH**: decrypts the key in memory and hands it to `ssh-agent` over its socket, with a lifetime. No plaintext key touches the disk.
-- **GPG**: imports the secret key when this machine lacks it (it stays protected by its GPG passphrase, which only the stick knows), then presets that passphrase in `gpg-agent`. gpg-agent has no expiry for presets, so keystick schedules `keystick lock <name>` with a transient systemd user timer.
+- **GPG**: imports the secret key when this machine lacks it (it stays protected by its GPG passphrase, which only the stick knows), then presets that passphrase in `gpg-agent`. gpg-agent has no expiry for presets, so kleyknox schedules `kleyknox lock <name>` with a transient systemd user timer.
 
 ## Use
 
 ```sh
-keystick init /run/media/$USER/STICK         # once: creates the keystick/ directory
-keystick new personale                       # new SSH key, straight into the vault
-keystick import lavoro ~/.ssh/id_ed25519     # or copy an existing Ed25519 SSH key in
-keystick gpg-new mail "Nome <nome@example.org>"   # new GPG key (Ed25519 + Cv25519)
-keystick gpg-import vecchia nome@example.org      # or an existing GPG key from the keyring
-keystick list
-keystick unlock --ttl 4h                     # everything; or `unlock <name>`
-keystick lock                                # everything keystick unlocked; or `lock <name>`
+kleyknox init /run/media/$USER/STICK         # once: creates the kleyknox/ directory
+kleyknox new personale                       # new SSH key, straight into the vault
+kleyknox import lavoro ~/.ssh/id_ed25519     # or copy an existing Ed25519 SSH key in
+kleyknox gpg-new mail "Nome <nome@example.org>"   # new GPG key (Ed25519 + Cv25519)
+kleyknox gpg-import vecchia nome@example.org      # or an existing GPG key from the keyring
+kleyknox list
+kleyknox unlock --ttl 4h                     # everything; or `unlock <name>`
+kleyknox lock                                # everything kleyknox unlocked; or `lock <name>`
 ```
 
 Use the same passphrase for every entry: `unlock` tries it on all of them.
 
 SSH needs a running agent: `systemctl --user enable --now ssh-agent.socket` and
-`SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/ssh-agent.socket`. keystick falls back to that path on its own.
+`SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/ssh-agent.socket`. kleyknox falls back to that path on its own.
 For GPG, the first unlock adds `allow-preset-passphrase` to `gpg-agent.conf`.
 
-## Recovery without keystick
+## Recovery without kleyknox
 
 ```sh
 age -d personale.age > key && chmod 600 key   # SSH key
