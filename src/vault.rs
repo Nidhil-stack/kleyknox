@@ -1,6 +1,7 @@
-//! The `keystick/` directory on the USB stick: `<name>.age` holds the OpenSSH
-//! private key encrypted to a passphrase (age + scrypt), `<name>.pub` its
-//! public half. Either file can be used without keystick: `age -d name.age`.
+//! The `keystick/` directory on the USB stick, every secret encrypted to the
+//! same passphrase (age + scrypt) and readable without keystick (`age -d`):
+//! - `<name>.age`: an OpenSSH private key, with `<name>.pub` beside it
+//! - `<name>.gpg.age`: a GPG entry (see gpg.rs), with `<name>.asc` beside it
 
 use std::fs;
 use std::io::{Read, Write};
@@ -52,16 +53,48 @@ pub fn locate(explicit: Option<PathBuf>) -> Result<PathBuf> {
     }
 }
 
-pub fn names(dir: &Path) -> Result<Vec<String>> {
-    let mut names: Vec<String> = fs::read_dir(dir)?
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    Ssh,
+    Gpg,
+}
+
+impl Kind {
+    pub fn label(self) -> &'static str {
+        match self {
+            Kind::Ssh => "ssh",
+            Kind::Gpg => "gpg",
+        }
+    }
+
+    /// File name without `.age`; names never contain dots, so this is unambiguous.
+    pub fn stem(self, name: &str) -> String {
+        match self {
+            Kind::Ssh => name.to_owned(),
+            Kind::Gpg => format!("{name}.gpg"),
+        }
+    }
+}
+
+pub struct Item {
+    pub name: String,
+    pub kind: Kind,
+}
+
+pub fn items(dir: &Path) -> Result<Vec<Item>> {
+    let mut items: Vec<Item> = fs::read_dir(dir)?
         .flatten()
         .filter_map(|e| {
-            let name = e.file_name().into_string().ok()?;
-            name.strip_suffix(".age").map(str::to_owned)
+            let file = e.file_name().into_string().ok()?;
+            let stem = file.strip_suffix(".age")?;
+            Some(match stem.strip_suffix(".gpg") {
+                Some(name) => Item { name: name.to_owned(), kind: Kind::Gpg },
+                None => Item { name: stem.to_owned(), kind: Kind::Ssh },
+            })
         })
         .collect();
-    names.sort();
-    Ok(names)
+    items.sort_by(|a, b| (&a.name, a.kind.label()).cmp(&(&b.name, b.kind.label())));
+    Ok(items)
 }
 
 pub fn check_name(name: &str) -> Result<()> {
@@ -74,15 +107,17 @@ pub fn check_name(name: &str) -> Result<()> {
     Ok(())
 }
 
+/// Encrypts `secret` to `<stem>.age` and writes `public` (a non-secret
+/// companion such as a .pub or .asc file) next to it.
 pub fn store(
     dir: &Path,
-    name: &str,
-    private_openssh: &str,
-    public_openssh: &str,
+    stem: &str,
+    secret: &[u8],
+    public: (&str, &str),
     passphrase: SecretString,
     force: bool,
 ) -> Result<()> {
-    let age_path = dir.join(format!("{name}.age"));
+    let age_path = dir.join(format!("{stem}.age"));
     if age_path.exists() && !force {
         bail!("{} already exists (use --force to replace it)", age_path.display());
     }
@@ -90,18 +125,18 @@ pub fn store(
     let mut ciphertext = Vec::new();
     let encryptor = age::Encryptor::with_user_passphrase(passphrase);
     let mut writer = encryptor.wrap_output(&mut ciphertext)?;
-    writer.write_all(private_openssh.as_bytes())?;
+    writer.write_all(secret)?;
     writer.finish()?;
 
     write_atomic(&age_path, &ciphertext)?;
-    write_atomic(&dir.join(format!("{name}.pub")), public_openssh.as_bytes())?;
+    write_atomic(&dir.join(public.0), public.1.as_bytes())?;
     Ok(())
 }
 
-pub fn load(dir: &Path, name: &str, passphrase: SecretString) -> Result<Zeroizing<String>> {
-    let age_path = dir.join(format!("{name}.age"));
+pub fn load(dir: &Path, stem: &str, passphrase: SecretString) -> Result<Zeroizing<String>> {
+    let age_path = dir.join(format!("{stem}.age"));
     let file = fs::File::open(&age_path)
-        .with_context(|| format!("no key named {name} in {}", dir.display()))?;
+        .with_context(|| format!("{} not found", age_path.display()))?;
 
     let decryptor = age::Decryptor::new(file)?;
     if !decryptor.is_scrypt() {
