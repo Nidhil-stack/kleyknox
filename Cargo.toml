@@ -1,0 +1,18 @@
+[package]
+name = "keystick"
+version = "0.1.0"
+edition = "2024"
+description = "SSH keys kept encrypted on a USB stick, decrypted only into ssh-agent"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+age = "0.11"
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+rpassword = "7"
+ssh-key = { version = "0.6", features = ["ed25519", "encryption", "std"] }
+zeroize = "1"
+
+[profile.release]
+strip = true
+lto = true
