@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KleyKnox — le tue chiavi, in una chiavetta</title>
+  <meta name="description" content="KleyKnox tiene le chiavi SSH e GPG cifrate su una chiavetta USB e le sblocca tutte con una sola passphrase, per il tempo che scegli.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script>document.documentElement.classList.add("js");</script>
+</head>
+<body>
+
+<!-- The tower-key, drawn once and reused at every scale (hero stage, showcase, bullets, footer). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <mask id="tower-window" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"></rect>
+      <path d="M29.5 39 V31.5 a2.5 2.5 0 0 1 5 0 V39 Z" fill="#000"></path>
+      <rect x="31.4" y="28" width="1.2" height="12" fill="#fff"></rect>
+    </mask>
+    <symbol id="tower" viewBox="17 5 31 54">
+      <g mask="url(#tower-window)">
+        <g fill="var(--tower-lit, currentColor)">
+          <rect x="18" y="6" width="7" height="8" rx="1.4"></rect>
+          <rect x="28.5" y="6" width="7" height="8" rx="1.4"></rect>
+          <rect x="39" y="6" width="7" height="8" rx="1.4"></rect>
+          <rect x="18" y="12" width="28" height="7" rx="1.4"></rect>
+          <path d="M18 18 H46 L39 24 H25 Z"></path>
+          <rect x="25" y="22" width="14" height="36" rx="3"></rect>
+        </g>
+        <g fill="var(--tower-shade, currentColor)">
+          <path d="M39 6 H44.6 a1.4 1.4 0 0 1 1.4 1.4 V12 H39 Z"></path>
+          <path d="M32 12 H44.6 a1.4 1.4 0 0 1 1.4 1.4 V18 L39 24 H32 Z"></path>
+          <path d="M32 22 H39 V55 a3 3 0 0 1 -3 3 H32 Z"></path>
+        </g>
+      </g>
+      <rect x="37" y="43" width="10" height="4.5" rx="1.4" fill="var(--tower-shade, currentColor)"></rect>
+      <rect x="37" y="50.5" width="10" height="4.5" rx="1.4" fill="var(--tower-shade, currentColor)"></rect>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="bar">
+  <a class="wordmark" href="#top" aria-label="KleyKnox, inizio pagina">
+    <svg class="wordmark-mark" aria-hidden="true"><use href="#tower"></use></svg>KleyKnox
+  </a>
+  <nav aria-label="Sezioni">
+    <a class="link" href="#chiavetta">Sulla chiavetta</a>
+    <a class="link" href="#come">Come funziona</a>
+    <a class="link" href="#comandi">Comandi</a>
+    <a class="link" href="#passphrase">Passphrase</a>
+  </nav>
+  <a class="button key-bit" href="#installa">Installa</a>
+</header>
+
+<main id="top">
+
+  <!-- 1. Hero: what it is, and the real terminal on a stage cut like the battlements. -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <h1 id="hero-title">Le tue chiavi,<br> in una chiavetta</h1>
+      <p class="hero-lead">KleyKnox tiene le chiavi SSH e GPG cifrate su una chiavetta USB e le sblocca tutte con una sola passphrase, per il tempo che scegli.</p>
+      <a class="button key-bit" href="#installa">Installalo</a>
+    </div>
+    <div class="hero-stage">
+      <div class="term" data-ui aria-label="Terminale: kleyknox unlock sblocca tre chiavi per due ore">
+        <div class="term-top"><samp>~ — zsh</samp><samp>kleyknox 0.1.0</samp></div>
+<pre class="term-body"><samp><span class="t-dim">$</span> kleyknox unlock --ttl 2h
+KleyKnox passphrase: <span class="t-dim">••••••••••••••••••••••</span>
+<span class="t-ok">gpg</span> mail      unlocked for 2h
+<span class="t-ok">ssh</span> personale unlocked for 2h
+<span class="t-ok">gpg</span> vecchia   unlocked for 2h
+<span class="t-dim">$</span> ssh-add -l
+256 SHA256:Sh7v79IB+mAer5DxBTUB5LRytwhi1ZWISdKnxwoTQ+E
+    kleyknox:personale (ED25519)
+<span class="t-dim">$</span> <span class="t-caret"></span></samp></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Showcase: what is on the stick, one file at a time, in front of the tower. -->
+  <section class="showcase" id="chiavetta" aria-labelledby="chiavetta-title">
+    <div class="showcase-stage shutter">
+      <svg class="showcase-tower" aria-hidden="true"><use href="#tower"></use></svg>
+      <div class="file" data-ui>
+        <div class="file-top"><samp class="file-name" id="file-name">personale.age</samp><samp class="file-size" id="file-size">581 byte</samp></div>
+        <pre class="file-body" id="file-body">age-encryption.org/v1
+-&gt; scrypt iY2iEM6ALAVPbQ84Ro0AkA 20
+nW1Lq0b2kR9x3cXvT6pYQ8hZ0fJmA4sDk7GuEo5wIr
+--- 4bWq0tYk2mPz8xXc1vN6sJ3dL9hR5fQ0gA7eKuYo
+7c 2f 91 e4 0b a8 55 3d c1 9e 6f 02 b7 48 d3 1a
+e0 64 af 13 78 c2 5b 9d 04 f6 21 8e 37 ca 90 5e
+b1 0d 6a f3 82 47 ec 19 5f a0 3b d8 76 2c e9 41</pre>
+      </div>
+    </div>
+    <div class="showcase-list">
+      <h2 id="chiavetta-title">Sulla chiavetta</h2>
+      <ul class="files" role="tablist" aria-label="File nella cartella kleyknox/">
+        <li><button role="tab" aria-selected="true" data-file="0">personale.age</button></li>
+        <li><button role="tab" aria-selected="false" data-file="1">personale.pub</button></li>
+        <li><button role="tab" aria-selected="false" data-file="2">mail.gpg.age</button></li>
+        <li><button role="tab" aria-selected="false" data-file="3">mail.asc</button></li>
+      </ul>
+    </div>
+    <p class="showcase-fact" id="file-fact" aria-live="polite">La chiave SSH, cifrata con scrypt a 2<sup>20</sup>. Si apre anche senza KleyKnox: <code>age -d personale.age</code>.</p>
+  </section>
+
+  <!-- 3. How it works: the same vault card, four moments, four fields. -->
+  <section class="how" id="come" aria-labelledby="come-title">
+    <div class="field f1">
+      <h2 id="come-title">Come funziona</h2>
+      <div class="card" data-ui>
+        <div class="card-head"><samp>kleyknox list</samp><span class="pill pill-off">bloccata</span></div>
+        <ul class="card-rows">
+          <li><samp class="kind">gpg</samp>mail<span class="state off">bloccata</span></li>
+          <li><samp class="kind">ssh</samp>personale<span class="state off">bloccata</span></li>
+          <li><samp class="kind">gpg</samp>vecchia<span class="state off">bloccata</span></li>
+        </ul>
+        <p class="card-foot"><samp>/run/media/nicholas/STICK/kleyknox</samp></p>
+      </div>
+      <p class="clause">Prima colleghi la chiavetta.</p>
+    </div>
+    <div class="field f2">
+      <div class="card" data-ui>
+        <div class="card-head"><samp>kleyknox unlock</samp><span class="pill pill-wait">scrypt</span></div>
+        <label class="card-label" for="demo-pass">KleyKnox passphrase</label>
+        <input class="card-input" id="demo-pass" type="password" value="lampione-orzo-vela-tram-55" readonly tabindex="-1" aria-label="Passphrase di esempio">
+        <div class="card-bar"><span style="width: 66%"></span></div>
+        <p class="card-foot">2 di 3 voci aperte · 1,3 s ciascuna</p>
+      </div>
+      <p class="clause">Una passphrase le apre tutte.</p>
+    </div>
+    <div class="field f3">
+      <div class="card" data-ui>
+        <div class="card-head"><samp>kleyknox list</samp><span class="pill pill-on">sbloccata</span></div>
+        <ul class="card-rows">
+          <li><samp class="kind">gpg</samp>mail<span class="state on">1 h 59 min</span></li>
+          <li><samp class="kind">ssh</samp>personale<span class="state on">1 h 59 min</span></li>
+          <li><samp class="kind">gpg</samp>vecchia<span class="state on">1 h 59 min</span></li>
+        </ul>
+        <p class="card-foot">ssh-agent · gpg-agent</p>
+      </div>
+      <p class="clause">Le chiavi entrano negli agent.</p>
+    </div>
+    <div class="field f4">
+      <div class="card" data-ui>
+        <div class="card-head"><samp>kleyknox lock</samp><span class="pill pill-off">bloccata</span></div>
+        <ul class="card-rows">
+          <li><samp class="kind">gpg</samp>mail<span class="state off">chiusa alle 18:00</span></li>
+          <li><samp class="kind">ssh</samp>personale<span class="state off">chiusa alle 18:00</span></li>
+          <li><samp class="kind">gpg</samp>vecchia<span class="state off">chiusa alle 18:00</span></li>
+        </ul>
+        <p class="card-foot"><samp>timer: kleyknox-expire-mail.timer</samp></p>
+      </div>
+      <p class="clause">Alla scadenza si richiudono.</p>
+    </div>
+  </section>
+
+  <!-- 4. Features: close-ups of the real interface, CLI and AegisGPG. -->
+  <section class="board" id="dettagli" aria-labelledby="dettagli-title">
+    <div class="tile t-head"><h2 id="dettagli-title">Nei dettagli</h2></div>
+
+    <div class="tile t-aegis">
+      <div class="zoom aegis" data-ui>
+        <p class="aegis-title">Unlock with KleyKnox</p>
+        <p class="aegis-path"><samp>/run/media/nicholas/STICK/kleyknox</samp></p>
+        <span class="aegis-input">••••••••••••••••</span>
+        <span class="aegis-label">Keep unlocked for</span>
+        <span class="aegis-select">2 hours ▾</span>
+        <span class="aegis-button">Unlock</span>
+      </div>
+      <p class="cap"><strong>Dentro AegisGPG</strong>La finestra della passphrase offre KleyKnox.</p>
+    </div>
+
+    <div class="tile t-toggle">
+      <div class="zoom toggle-ui" data-ui><span class="switch" aria-hidden="true"><span></span></span><span class="toggle-label">Use KleyKnox<br>when plugged in</span></div>
+      <p class="cap"><strong>Di default</strong>Quando la chiavetta c'è, viene prima lei.</p>
+    </div>
+
+    <div class="tile t-scrypt">
+      <div class="zoom figure-ui" data-ui>2<sup>20</sup></div>
+      <p class="cap"><strong>Costo fisso</strong>Scrypt uguale su ogni PC.</p>
+    </div>
+
+    <div class="tile t-status">
+      <div class="zoom status-ui" data-ui><span>sbloccata</span></div>
+      <p class="cap"><strong>A tempo</strong>15 min, 1, 2 o 8 ore.</p>
+    </div>
+
+    <div class="tile t-file">
+      <div class="zoom files-ui" data-ui><samp>mail.gpg.age</samp><samp>personale.pub</samp></div>
+      <p class="cap"><strong>Formati aperti</strong>age, OpenSSH e OpenPGP: niente di proprietario.</p>
+    </div>
+
+    <div class="tile t-min">
+      <div class="zoom figure-ui" data-ui>12+</div>
+      <p class="cap"><strong>Niente scorciatoie</strong>Sotto i 12 caratteri dice di no.</p>
+    </div>
+
+    <div class="tile t-algo">
+      <div class="zoom chip-ui" data-ui><samp>ED25519</samp></div>
+      <p class="cap"><strong>Chiavi moderne</strong>Ed25519 per SSH, Cv25519 per GPG.</p>
+    </div>
+  </section>
+
+  <!-- 5. The name: kleis and Knox, in real pictures, on a deep panel that splits the page. -->
+  <section class="name" id="nome" aria-labelledby="nome-title">
+    <div class="name-copy">
+      <h2 id="nome-title">Una chiave, un caveau</h2>
+      <p><strong>Kley</strong> viene da κλείς, la chiave dei Greci: un ferro con i denti che apriva una sola porta. <strong>Knox</strong> è Fort Knox, il deposito dove gli Stati Uniti chiudono l'oro dal 1937. KleyKnox mette insieme le due cose: la chiave sta nel caveau, e il caveau sta in tasca.</p>
+      <figure class="name-keys">
+        <img src="assets/bronze-ring-key.jpg" width="1800" height="1936" alt="Chiave ad anello in bronzo, romana, III–IV secolo" loading="lazy">
+        <img src="assets/bronze-folding-key.jpg" width="1816" height="1936" alt="Chiave pieghevole in bronzo, bizantina, X–XII secolo" loading="lazy">
+        <figcaption>Chiavi in bronzo, romana del III–IV secolo e bizantina del X–XII. The Met, New York.</figcaption>
+      </figure>
+    </div>
+    <figure class="name-picture battlement">
+      <div class="frame"><img class="drift" src="assets/united-states-bullion-depository-1939.jpg" width="1640" height="1230" alt="Il deposito dell'oro di Fort Knox nel 1939, visto dal cancello d'ingresso" loading="lazy"></div>
+      <figcaption>Il deposito di Fort Knox, 1939.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 6. Proof: the standards it speaks, set as names on tiles. -->
+  <section class="speaks" id="standard" aria-labelledby="standard-title">
+    <div class="mark mark-head"><h2 id="standard-title">Parla già la loro lingua</h2><p>Nessun formato suo: le chiavi restano leggibili da questi strumenti anche senza KleyKnox.</p></div>
+    <div class="mark"><span>OpenSSH</span><p>ssh-agent, chiavi Ed25519</p></div>
+    <div class="mark"><span>GnuPG</span><p>gpg-agent, chiavi OpenPGP</p></div>
+    <div class="mark"><span>age</span><p>cifratura con scrypt</p></div>
+    <div class="mark"><span>AegisGPG</span><p>sblocco dalla finestra</p></div>
+    <div class="mark"><span>Thunderbird</span><p>tramite GnuPG</p></div>
+    <div class="mark"><span>systemd</span><p>il timer che richiude</p></div>
+  </section>
+
+  <!-- 7. Commands as a printed sheet with battlement edges, over the vault postcard. -->
+  <section class="sheet-ground" id="comandi" aria-labelledby="comandi-title">
+    <img class="sheet-photo" src="assets/gold-vault-u-s-depository-fort-knox.jpg" width="1920" height="1234" alt="Cartolina del caveau dell'oro di Fort Knox, anni Trenta" loading="lazy">
+    <div class="sheet battlement-both">
+      <h2 id="comandi-title">I comandi</h2>
+      <p class="sheet-note">Otto comandi, tre momenti. Quello che leggi qui è quello che scrivi.</p>
+
+      <div class="group">
+        <h3>Preparare la chiavetta</h3>
+        <dl>
+          <div><dt><code>kleyknox init &lt;mount&gt;</code></dt><dd class="v">una volta</dd><dd class="d">Crea la cartella <code>kleyknox/</code> sulla chiavetta.</dd></div>
+          <div><dt><code>kleyknox new &lt;nome&gt;</code></dt><dd class="v">Ed25519</dd><dd class="d">Genera una chiave SSH direttamente nel vault.</dd></div>
+          <div><dt><code>kleyknox import &lt;nome&gt; &lt;file&gt;</code></dt><dd class="v">--force</dd><dd class="d">Copia dentro una chiave SSH che hai già.</dd></div>
+        </dl>
+      </div>
+
+      <div class="group">
+        <h3>Le chiavi GPG</h3>
+        <dl>
+          <div><dt><code>kleyknox gpg-new &lt;nome&gt; "&lt;uid&gt;"</code></dt><dd class="v">Cv25519</dd><dd class="d">Chiave nuova con passphrase GPG casuale: la sa solo la chiavetta.</dd></div>
+          <div><dt><code>kleyknox gpg-import &lt;nome&gt; &lt;chiave&gt;</code></dt><dd class="v">dal keyring</dd><dd class="d">Porta dentro una chiave GPG esistente.</dd></div>
+        </dl>
+      </div>
+
+      <div class="group">
+        <h3>Ogni giorno</h3>
+        <dl>
+          <div><dt><code>kleyknox unlock [nome]</code></dt><dd class="v">--ttl 2h</dd><dd class="d">Una passphrase, tutte le chiavi, per il tempo scelto.</dd></div>
+          <div><dt><code>kleyknox lock [nome]</code></dt><dd class="v">subito</dd><dd class="d">Richiude prima della scadenza.</dd></div>
+          <div><dt><code>kleyknox list</code></dt><dd class="v">stato</dd><dd class="d">Cosa c'è sulla chiavetta e cosa è aperto.</dd></div>
+        </dl>
+      </div>
+
+      <div class="group" id="installa">
+        <h3>Installare</h3>
+        <pre class="install"><code>git clone https://github.com/Nidhil-stack/kleyknox
+cd kleyknox &amp;&amp; cargo install --path .</code></pre>
+      </div>
+
+      <p class="sheet-hours">Linux con OpenSSH 8.2 e GnuPG 2.4<br>systemd per la scadenza delle chiavi GPG</p>
+    </div>
+  </section>
+
+  <!-- 8. The live thing: how long would your passphrase hold against scrypt 2^20. -->
+  <section class="probe" id="passphrase" aria-labelledby="passphrase-title">
+    <h2 id="passphrase-title">Quanto regge la passphrase?</h2>
+    <figure class="probe-film">
+      <video src="assets/opening-a-padlock.webm" poster="assets/opening-a-padlock-poster.jpg" muted loop playsinline autoplay preload="metadata" width="854" height="480" aria-label="Mani che girano le rotelle di un lucchetto a combinazione"></video>
+      <figcaption>Un lucchetto a quattro cifre: diecimila combinazioni.</figcaption>
+    </figure>
+    <form class="probe-form" id="probe" autocomplete="off">
+      <p class="probe-sentence">
+        <label for="probe-input">Chi ruba la chiavetta deve indovinare</label>
+        <input id="probe-input" type="password" placeholder="la tua passphrase" spellcheck="false" autocapitalize="off">
+        <button class="button key-bit" type="submit">Misura</button>
+      </p>
+      <p class="probe-result" id="probe-result" aria-live="polite">Scrivi una passphrase: il conto lo fa questa pagina, e non la invia a nessuno.</p>
+      <p class="probe-note">Stima per caratteri casuali, o per parole scelte a caso da un elenco di 7.776 se separi con spazi o trattini. Si suppone un attaccante con 10.000 tentativi al secondo contro scrypt a 2<sup>20</sup>: un centinaio di GPU.</p>
+    </form>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="blocks" aria-label="KleyKnox">
+    <span style="--h:100%">K</span><span style="--h:72%">l</span><span style="--h:84%">e</span><span style="--h:64%">y</span><span style="--h:100%">K</span><span style="--h:78%">n</span><span style="--h:88%">o</span><span style="--h:70%">x</span>
+    <svg class="blocks-tower" aria-hidden="true"><use href="#tower"></use></svg>
+  </div>
+  <div class="foot-grid">
+    <nav aria-label="Pagina">
+      <a class="link" href="#chiavetta">Sulla chiavetta</a>
+      <a class="link" href="#come">Come funziona</a>
+      <a class="link" href="#dettagli">Nei dettagli</a>
+    </nav>
+    <nav aria-label="Riferimenti">
+      <a class="link" href="#comandi">I comandi</a>
+      <a class="link" href="#passphrase">La passphrase</a>
+      <a class="link" href="https://github.com/Nidhil-stack/kleyknox">Codice su GitHub</a>
+    </nav>
+    <nav aria-label="Progetti collegati">
+      <a class="link" href="https://github.com/EddyDevProject/AegisGPG">AegisGPG</a>
+      <a class="link" href="https://age-encryption.org">age</a>
+      <a class="link" href="https://gnupg.org">GnuPG</a>
+    </nav>
+    <p class="credits">Immagini: deposito di Fort Knox, 1939, Committee on Architectural Surveys, pubblico dominio; cartolina del caveau, Tichnor Bros., pubblico dominio (Wikimedia Commons). Chiave ad anello romana e chiave pieghevole bizantina in bronzo, The Metropolitan Museum of Art, CC0. Video "Opening a padlock" di Wasiul Bahar, CC BY-SA 4.0, via Wikimedia Commons.</p>
+  </div>
+  <div class="foot-last">
+    <span>KleyKnox · GPL-3.0</span>
+    <a class="button key-bit small" href="#top">Torna su</a>
+  </div>
+</footer>
+
+<script src="main.js" defer></script>
+</body>
+</html>

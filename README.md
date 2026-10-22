@@ -1,48 +1,143 @@
-# kleyknox
+<p align="center">
+  <img src="docs/img/tower.svg" width="72" alt="KleyKnox tower-key">
+</p>
 
-SSH and GPG keys kept encrypted on a USB stick, all unlocked with one passphrase, for a limited time.
+<h1 align="center">KleyKnox</h1>
 
-On the stick, in `kleyknox/`, every secret is encrypted to the same passphrase (age, scrypt):
+<p align="center">
+  <strong>Your keys, on one stick.</strong><br>
+  SSH and GPG keys kept encrypted on a USB stick, all unlocked with one passphrase, for as long as you choose.
+</p>
 
-| File | Contents |
+<p align="center">
+  <a href="https://github.com/Nidhil-stack/kleyknox/actions/workflows/ci.yml"><img src="https://github.com/Nidhil-stack/kleyknox/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Linux%20%C2%B7%20Windows%20%C2%B7%20macOS-1e232b?style=flat-square" alt="Linux, Windows, macOS">
+  <img src="https://img.shields.io/badge/license-GPL--3.0-2bb3c0?style=flat-square" alt="GPL-3.0">
+  <a href="https://nidhil-stack.github.io/kleyknox/"><img src="https://img.shields.io/badge/site-kleyknox-167780?style=flat-square" alt="Website"></a>
+</p>
+
+![KleyKnox: le tue chiavi, in una chiavetta](docs/img/top.jpg)
+
+```console
+$ kleyknox unlock --ttl 2h
+KleyKnox passphrase: ••••••••••••••••••••••
+gpg mail      unlocked for 2h
+ssh personale unlocked for 2h
+gpg vecchia   unlocked for 2h
+```
+
+## What is on the stick
+
+![The kleyknox/ folder: one .age file per key, beside its public half](docs/img/chiavetta.jpg)
+
+A `kleyknox/` folder, and nothing in it is readable without the passphrase:
+
+| File | Holds |
 | --- | --- |
-| `<name>.age` + `<name>.pub` | OpenSSH Ed25519 private key + public key |
-| `<name>.gpg.age` + `<name>.asc` | GPG secret key export + the passphrase protecting it, and the public key |
+| `<name>.age` + `<name>.pub` | An OpenSSH Ed25519 private key, encrypted; its public key in the clear |
+| `<name>.gpg.age` + `<name>.asc` | A GPG secret key **and** the random passphrase that protects it, encrypted together; the public key |
 
-`kleyknox unlock` asks the passphrase once and then does two things:
+Every `.age` file is plain [age](https://age-encryption.org) with an scrypt recipient at a fixed cost of 2<sup>20</sup> (about 1.3 s per guess on a laptop), so it opens on any PC, and without KleyKnox: `age -d personale.age`.
 
-- **SSH**: decrypts the key in memory and hands it to `ssh-agent` over its socket, with a lifetime. No plaintext key touches the disk.
-- **GPG**: imports the secret key when this machine lacks it (it stays protected by its GPG passphrase, which only the stick knows), then presets that passphrase in `gpg-agent`. gpg-agent has no expiry for presets, so kleyknox schedules `kleyknox lock <name>` with a transient systemd user timer.
+## How it works
 
-## Use
+![Four moments: plugged in, one passphrase, keys in the agents, locked again](docs/img/come.jpg)
 
-```sh
-kleyknox init /run/media/$USER/STICK         # once: creates the kleyknox/ directory
-kleyknox new personale                       # new SSH key, straight into the vault
-kleyknox import lavoro ~/.ssh/id_ed25519     # or copy an existing Ed25519 SSH key in
-kleyknox gpg-new mail "Nome <nome@example.org>"   # new GPG key (Ed25519 + Cv25519)
-kleyknox gpg-import vecchia nome@example.org      # or an existing GPG key from the keyring
-kleyknox list
-kleyknox unlock --ttl 4h                     # everything; or `unlock <name>`
-kleyknox lock                                # everything kleyknox unlocked; or `lock <name>`
+1. **Plug in the stick.** KleyKnox finds `kleyknox/` on any mounted volume (`/run/media`, `/media`, `/Volumes`, drive letters `D:`–`Z:`), or wherever `--dir` / `KLEYKNOX_DIR` points.
+2. **Type one passphrase.** It opens every entry.
+3. **Keys go into the agents, not onto the disk.** SSH keys are decrypted in memory and handed to `ssh-agent` over its socket (a named pipe on Windows), with a lifetime. GPG keys are imported still protected, and their passphrase is preset in `gpg-agent`.
+4. **When the time is up they lock again.** A systemd user timer, or a small detached process where systemd is missing, runs `kleyknox lock`.
+
+## In the details
+
+![Close-ups: AegisGPG's unlock dialog, the default toggle, scrypt 2^20, the 12-character minimum](docs/img/dettagli.jpg)
+
+- **Inside [AegisGPG](https://github.com/EddyDevProject/AegisGPG):** the passphrase dialog can take the KleyKnox passphrase instead, and do so by default whenever the stick is plugged in.
+- **Timed:** `--ttl 15m`, `1h`, `2h` (default), `8h`, or `none`.
+- **No shortcuts:** passphrases under 12 characters are refused. Anyone holding the stick can guess offline, forever.
+- **Modern keys:** Ed25519 for SSH, Ed25519 + Cv25519 for GPG.
+
+## The commands
+
+![The commands, printed like a menu](docs/img/comandi.jpg)
+
+| | Command | |
+| --- | --- | --- |
+| **Prepare** | `kleyknox init <mount>` | Create `kleyknox/` on the stick, once |
+| | `kleyknox new <name>` | Generate an Ed25519 SSH key straight into the vault |
+| | `kleyknox import <name> <file>` | Copy in an SSH key you already have |
+| **GPG** | `kleyknox gpg-new <name> "<uid>"` | New key, with a random GPG passphrase only the stick knows |
+| | `kleyknox gpg-import <name> <key>` | Bring in a GPG key from your keyring |
+| **Every day** | `kleyknox unlock [name] --ttl 2h` | One passphrase, every key, for the time chosen |
+| | `kleyknox lock [name]` | Lock before the time is up |
+| | `kleyknox list` | What is on the stick, and what is open |
+
+`kleyknox --help` opens with the key itself, drawn in armor characters:
+
+```text
+  KY//KW    VEG590    e6tqxs
+ FK18HTDF  LJXKKPFX  jnxna9kq
+ M7FRIF3Y  02XMICKY  f7arz1u9
+ UQGHKFWW1PISGAzhrsdyvyhyos6z
+ YGODUBG5PHIW0Tdwpp6r7d4jqonf
+ H+UAEBW2ZYM8RO6lastaqx8baygt
+ JR2UFQQYUDK4M4kmpaoh80wzaztt
+   F2KPHOGCN8FAk7dlnuctkqtj
+      4CY7MLGKW+r60ec3j8
+        HLOQEXXdzaojsy
+        Z1PGB6F9czpble
+        FIK/GAMpf4k4kv
+        X0HJH W+ lwi9/
+        UC5E  Sk  6a2z
+        XVPF  Bw  tfip
+        BCHQ  Wn  sfix
+        UPPQ  P5  wvmx
+        A52HH/5rellto/
+        BFHQRN6/jich60
+        O02IQFQlq4suljt9zn7e/e
+        GT8QAVAgho7pulttqu9xud
+        GS75AIN+zvugv5
+        43VDWTPcnhxn2o
+        DTDAZGFdtcsgkyue+3r1jm
+        K4BMMNT3vi904vh+8o+d09
+        AE7AX4Kzfoa0bj
+           SFCFk4==
 ```
 
-Use the same passphrase for every entry: `unlock` tries it on all of them.
-
-SSH needs a running agent: `systemctl --user enable --now ssh-agent.socket` and
-`SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/ssh-agent.socket`. kleyknox falls back to that path on its own.
-For GPG, the first unlock adds `allow-preset-passphrase` to `gpg-agent.conf`.
-
-## Recovery without kleyknox
+## Install
 
 ```sh
-age -d personale.age > key && chmod 600 key   # SSH key
-age -d mail.gpg.age                           # header with the GPG passphrase, then the key to `gpg --import`
+git clone https://github.com/Nidhil-stack/kleyknox
+cd kleyknox && cargo install --path .
 ```
 
-## Limits
+Or take a binary for Linux, Windows or macOS from the [releases](https://github.com/Nidhil-stack/kleyknox/releases).
 
-- Anyone holding the stick can guess the passphrase offline with no limit on attempts. Use a long one: at least 12 characters are enforced, and 5-6 random words are better.
-- While keys are unlocked, any process running as your user can use them. Keep `--ttl` short, and use `--confirm` for SSH.
-- GPG keys stay in the keyring of every PC where you unlock them, protected by a random passphrase that only the stick knows. Delete them with `gpg --delete-secret-keys` on PCs you do not own.
-- Only Ed25519 keys are supported for SSH.
+| Needs | For |
+| --- | --- |
+| OpenSSH 8.2+ with a running `ssh-agent` | SSH keys. Linux: `systemctl --user enable --now ssh-agent.socket`. Windows: start the *OpenSSH Authentication Agent* service |
+| GnuPG 2.4 (`gpg`, `gpgconf` on `PATH`; gpg4win on Windows) | GPG keys. The first unlock adds `allow-preset-passphrase` to `gpg-agent.conf` |
+| systemd (optional) | Exact expiry timers; without it a detached `kleyknox` process does the locking |
+
+## How much does the passphrase hold?
+
+![A combination padlock: ten thousand combinations](docs/img/passphrase.jpg)
+
+The stick is only as strong as its passphrase, because a thief can try passphrases offline. Each guess costs one scrypt run at 2<sup>20</sup> (1 GiB of memory). The [site](https://nidhil-stack.github.io/kleyknox/#passphrase) estimates how long yours would hold against 10,000 guesses a second, in your browser, without sending it anywhere. Five or six random words is a good answer.
+
+## Limits, honestly
+
+- While keys are unlocked, any process running as you can use them through the agents. Keep `--ttl` short; for SSH, `--confirm` asks on every use (where the agent supports it).
+- GPG keys stay in the keyring of every PC you unlock them on, protected by a passphrase only the stick knows. Remove them with `gpg --delete-secret-keys` on machines that are not yours.
+- On Windows, the OpenSSH agent keeps added keys in the registry (DPAPI-encrypted) until they are removed; KleyKnox removes them at expiry or on `kleyknox lock`.
+- Not audited. For high-stakes keys, prefer a hardware token.
+
+## The name
+
+![Kley and Knox: a key and a vault](docs/img/nome.jpg)
+
+**Kley** is κλείς, the Greek key. **Knox** is Fort Knox, the vault where the United States has kept its gold since 1937. The key goes in the vault, and the vault goes in your pocket.
+
+---
+
+<sub>Pictures: United States Bullion Depository, 1939, Committee on Architectural Surveys, public domain; *Gold Vault, U. S. Depository, Fort Knox, Ky*, Tichnor Bros., public domain (Wikimedia Commons). Roman bronze ring key and Byzantine bronze folding key, The Metropolitan Museum of Art, CC0. Video *Opening a padlock* by Wasiul Bahar, CC BY-SA 4.0, via Wikimedia Commons. Code: GPL-3.0-or-later.</sub>
