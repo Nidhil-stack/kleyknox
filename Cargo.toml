@@ -2,7 +2,7 @@
 name = "kleyknox"
 version = "0.1.0"
 edition = "2024"
-description = "SSH keys kept encrypted on a USB stick, decrypted only into ssh-agent"
+description = "SSH and GPG keys kept encrypted on a USB stick, unlocked with one passphrase"
 license = "GPL-3.0-or-later"
 
 [dependencies]
@@ -16,3 +16,8 @@ zeroize = "1"
 [profile.release]
 strip = true
 lto = true
+
+# scrypt at 2^20 takes minutes unoptimized: build dependencies optimized in
+# dev and test builds too, so `cargo test` stays quick.
+[profile.dev.package."*"]
+opt-level = 3

@@ -3,8 +3,7 @@
 //! the agent's without touching disk or another process.
 
 use std::io::{Read, Write};
-use std::os::unix::net::UnixStream;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use zeroize::Zeroizing;
@@ -23,28 +22,54 @@ pub struct Identity {
     pub comment: String,
 }
 
+/// A Unix socket, or on Windows the named pipe of the OpenSSH agent service.
+trait Transport: Read + Write {}
+impl<T: Read + Write> Transport for T {}
+
 pub struct Agent {
-    stream: UnixStream,
+    stream: Box<dyn Transport>,
+}
+
+/// Where the agent listens when `SSH_AUTH_SOCK` does not say.
+#[cfg(unix)]
+fn default_path() -> Result<PathBuf> {
+    // The socket that `systemctl --user enable --now ssh-agent.socket` creates.
+    let runtime = std::env::var_os("XDG_RUNTIME_DIR")
+        .context("neither SSH_AUTH_SOCK nor XDG_RUNTIME_DIR is set")?;
+    Ok(PathBuf::from(runtime).join("ssh-agent.socket"))
+}
+
+#[cfg(windows)]
+fn default_path() -> Result<PathBuf> {
+    Ok(PathBuf::from(r"\\.\pipe\openssh-ssh-agent"))
+}
+
+#[cfg(unix)]
+const START_HINT: &str = "start one: systemctl --user enable --now ssh-agent.socket";
+#[cfg(windows)]
+const START_HINT: &str = "start the OpenSSH Authentication Agent service: \
+    Set-Service ssh-agent -StartupType Manual; Start-Service ssh-agent";
+
+#[cfg(unix)]
+fn open(path: &Path) -> std::io::Result<Box<dyn Transport>> {
+    Ok(Box::new(std::os::unix::net::UnixStream::connect(path)?))
+}
+
+/// A named pipe opens like a file, then reads and writes like a stream.
+#[cfg(windows)]
+fn open(path: &Path) -> std::io::Result<Box<dyn Transport>> {
+    Ok(Box::new(std::fs::OpenOptions::new().read(true).write(true).open(path)?))
 }
 
 impl Agent {
-    /// Connects to `$SSH_AUTH_SOCK`, falling back to the socket that
-    /// `systemctl --user enable --now ssh-agent.socket` creates.
+    /// Connects to `$SSH_AUTH_SOCK`, else to the platform's usual agent.
     pub fn connect() -> Result<Self> {
         let path = match std::env::var_os("SSH_AUTH_SOCK") {
             Some(p) if !p.is_empty() => PathBuf::from(p),
-            _ => {
-                let runtime = std::env::var_os("XDG_RUNTIME_DIR")
-                    .context("neither SSH_AUTH_SOCK nor XDG_RUNTIME_DIR is set")?;
-                PathBuf::from(runtime).join("ssh-agent.socket")
-            }
+            _ => default_path()?,
         };
-        let stream = UnixStream::connect(&path).with_context(|| {
-            format!(
-                "no ssh-agent at {} (start one: systemctl --user enable --now ssh-agent.socket)",
-                path.display()
-            )
-        })?;
+        let stream = open(&path)
+            .with_context(|| format!("no ssh-agent at {} ({START_HINT})", path.display()))?;
         Ok(Self { stream })
     }
 

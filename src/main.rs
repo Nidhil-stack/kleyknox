@@ -1,5 +1,6 @@
 mod agent;
 mod gpg;
+mod platform;
 mod vault;
 
 use std::io::{BufRead, IsTerminal};
@@ -122,6 +123,9 @@ enum Command {
     },
     /// Show the vault's entries and which are unlocked
     List,
+    /// Internal: the detached process that locks an entry when its time is up
+    #[command(name = "__expire", hide = true)]
+    Expire { name: String, secs: u32, token: String },
 }
 
 fn main() {
@@ -189,6 +193,12 @@ fn run(cli: Cli) -> Result<()> {
         }
         Command::Unlock { name, ttl, confirm } => unlock(cli.dir, name, &ttl, confirm)?,
         Command::Lock { name } => lock(name)?,
+        Command::Expire { name, secs, token } => {
+            vault::check_name(&name)?;
+            if platform::wait_for_expiry(&name, secs, &token)? {
+                lock(Some(name))?;
+            }
+        }
         Command::List => {
             let dir = vault::locate(cli.dir)?;
             let ssh_loaded: Vec<String> = match Agent::connect() {
@@ -233,6 +243,9 @@ fn unlock(dir: Option<PathBuf>, name: Option<String>, ttl: &str, confirm: bool) 
     let mut ssh_agent = None;
     let mut failed = 0;
     for item in &items {
+        // An earlier unlock's expiry must not cut this one short (for example
+        // `--ttl none` after `--ttl 5m`); a new TTL re-arms it below.
+        platform::cancel_expiry(&item.name);
         let result = match item.kind {
             Kind::Ssh => unlock_ssh(&dir, &item.name, &pass, &mut ssh_agent, lifetime, confirm),
             Kind::Gpg => unlock_gpg(&dir, &item.name, &pass, lifetime),
@@ -269,7 +282,20 @@ fn unlock_ssh(
         Some(a) => a,
         None => agent.insert(Agent::connect()?),
     };
-    agent.add_ed25519(&seed, &pair.public.0, &format!("{COMMENT_PREFIX}{name}"), lifetime, confirm)
+    let comment = format!("{COMMENT_PREFIX}{name}");
+    match agent.add_ed25519(&seed, &pair.public.0, &comment, lifetime, confirm) {
+        Ok(()) => Ok(()),
+        Err(e) if confirm => Err(e.context("this ssh-agent may not support --confirm")),
+        // Windows' OpenSSH agent refuses a lifetime: add the key plainly and let
+        // kleyknox itself remove it when the time is up.
+        Err(_) if lifetime.is_some() => {
+            agent.add_ed25519(&seed, &pair.public.0, &comment, None, false)?;
+            platform::schedule_expiry(name, lifetime.unwrap_or_default())?;
+            eprintln!("ssh {name}: this ssh-agent refuses a lifetime; kleyknox will remove the key itself");
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
 }
 
 fn unlock_gpg(dir: &Path, name: &str, pass: &str, lifetime: Option<u32>) -> Result<()> {
@@ -288,10 +314,10 @@ fn unlock_gpg(dir: &Path, name: &str, pass: &str, lifetime: Option<u32>) -> Resu
         }
     }
     gpg::mark_loaded(name, &bundle.keygrips)?;
-    if let Some(secs) = lifetime {
-        if let Err(e) = gpg::schedule_expiry(name, secs) {
-            eprintln!("gpg {name}: will NOT lock itself ({e:#}); run `kleyknox lock` when done");
-        }
+    if let Some(secs) = lifetime
+        && let Err(e) = platform::schedule_expiry(name, secs)
+    {
+        eprintln!("gpg {name}: will NOT lock itself ({e:#}); run `kleyknox lock` when done");
     }
     Ok(())
 }
@@ -432,5 +458,38 @@ fn ttl_label(secs: u32) -> String {
         s if s % 3600 == 0 => format!("{}h", s / 3600),
         s if s % 60 == 0 => format!("{}m", s / 60),
         s => format!("{s}s"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ttl_parses_units() {
+        assert_eq!(parse_ttl("90").unwrap(), Some(90));
+        assert_eq!(parse_ttl("90s").unwrap(), Some(90));
+        assert_eq!(parse_ttl("30m").unwrap(), Some(1800));
+        assert_eq!(parse_ttl("2h").unwrap(), Some(7200));
+        assert_eq!(parse_ttl("1d").unwrap(), Some(86400));
+        assert_eq!(parse_ttl("none").unwrap(), None);
+        for bad in ["", "0", "0h", "2x", "h", "-1m", "99999999999d"] {
+            assert!(parse_ttl(bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn ttl_labels_pick_the_largest_unit() {
+        assert_eq!(ttl_label(45), "45s");
+        assert_eq!(ttl_label(1800), "30m");
+        assert_eq!(ttl_label(7200), "2h");
+        assert_eq!(ttl_label(5400), "90m");
+        assert_eq!(ttl_label(172800), "2d");
+    }
+
+    #[test]
+    fn cli_definition_is_valid() {
+        use clap::CommandFactory;
+        Cli::command().debug_assert();
     }
 }

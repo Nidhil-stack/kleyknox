@@ -20,6 +20,30 @@ const WORK_FACTOR: u8 = 20;
 /// Highest cost accepted when opening, so a tampered file cannot demand hours.
 pub const MAX_WORK_FACTOR: u8 = 22;
 
+/// The roots of mounted volumes where a stick may be: drive letters D: to Z:
+/// on Windows, /Volumes on macOS, the usual mount points elsewhere.
+fn volumes() -> Vec<PathBuf> {
+    if cfg!(windows) {
+        return ('D'..='Z').map(|d| PathBuf::from(format!("{d}:\\"))).collect();
+    }
+    let roots: Vec<PathBuf> = if cfg!(target_os = "macos") {
+        vec![PathBuf::from("/Volumes")]
+    } else {
+        let user = std::env::var("USER").unwrap_or_default();
+        vec![
+            PathBuf::from("/run/media").join(&user),
+            PathBuf::from("/media").join(&user),
+            PathBuf::from("/media"),
+            PathBuf::from("/mnt"),
+        ]
+    };
+    roots
+        .iter()
+        .filter_map(|root| fs::read_dir(root).ok())
+        .flat_map(|entries| entries.flatten().map(|e| e.path()))
+        .collect()
+}
+
 /// Finds the vault: an explicit path wins, otherwise every mounted removable
 /// volume is searched for a `kleyknox/` directory.
 pub fn locate(explicit: Option<PathBuf>) -> Result<PathBuf> {
@@ -30,23 +54,11 @@ pub fn locate(explicit: Option<PathBuf>) -> Result<PathBuf> {
         return Ok(dir);
     }
 
-    let user = std::env::var("USER").unwrap_or_default();
-    let roots = [
-        PathBuf::from("/run/media").join(&user),
-        PathBuf::from("/media").join(&user),
-        PathBuf::from("/media"),
-        PathBuf::from("/mnt"),
-    ];
-    let mut found = Vec::new();
-    for root in roots {
-        let Ok(entries) = fs::read_dir(&root) else { continue };
-        for entry in entries.flatten() {
-            let candidate = entry.path().join(DIR_NAME);
-            if candidate.is_dir() {
-                found.push(candidate);
-            }
-        }
-    }
+    let mut found: Vec<PathBuf> = volumes()
+        .into_iter()
+        .map(|volume| volume.join(DIR_NAME))
+        .filter(|candidate| candidate.is_dir())
+        .collect();
 
     match found.len() {
         0 => bail!(
@@ -177,8 +189,54 @@ fn write_atomic(path: &Path, data: &[u8]) -> Result<()> {
         f.sync_all()?;
     }
     fs::rename(&tmp, path)?;
+    // Makes the rename itself durable. Windows cannot open a directory as a
+    // file; NTFS and FAT there flush the rename with the volume.
+    #[cfg(unix)]
     if let Some(parent) = path.parent() {
         fs::File::open(parent)?.sync_all()?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_vault(tag: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("kleyknox-test-{tag}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn names_are_checked() {
+        for ok in ["mail", "work-2", "a_b"] {
+            assert!(check_name(ok).is_ok(), "{ok}");
+        }
+        for bad in ["", "a.b", "a/b", "..", "with space", &"x".repeat(65)] {
+            assert!(check_name(bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn store_list_and_load() {
+        let dir = temp_vault("store");
+        let pass = || SecretString::from("correct horse battery".to_owned());
+        store(&dir, &Kind::Gpg.stem("mail"), b"secret body", ("mail.asc", "public"), pass(), false).unwrap();
+        store(&dir, &Kind::Ssh.stem("work"), b"ssh key", ("work.pub", "ssh-ed25519 AAAA"), pass(), false).unwrap();
+
+        let items = items(&dir).unwrap();
+        let listed: Vec<_> = items.iter().map(|i| (i.name.as_str(), i.kind.label())).collect();
+        assert_eq!(listed, [("mail", "gpg"), ("work", "ssh")]);
+        assert_eq!(fs::read_to_string(dir.join("mail.asc")).unwrap(), "public");
+
+        assert_eq!(load(&dir, "mail.gpg", pass()).unwrap().as_str(), "secret body");
+        let wrong = load(&dir, "work", SecretString::from("nope".to_owned()));
+        assert_eq!(wrong.unwrap_err().to_string(), "wrong passphrase");
+
+        let again = store(&dir, "work", b"x", ("work.pub", "y"), pass(), false);
+        assert!(again.is_err(), "an existing entry is not replaced without force");
+        fs::remove_dir_all(&dir).unwrap();
+    }
 }

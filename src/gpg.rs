@@ -5,14 +5,15 @@
 //! the PC's disk stays useless without the stick.
 
 use std::fs;
-use std::io::{BufRead, BufReader, Write};
-use std::os::unix::net::UnixStream;
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use anyhow::{Context, Result, bail};
 use ssh_key::rand_core::{OsRng, RngCore};
 use zeroize::Zeroizing;
+
+use crate::platform;
 
 const BUNDLE_MAGIC: &str = "kleyknox-gpg-v1";
 
@@ -202,16 +203,50 @@ pub fn ensure_preset_allowed() -> Result<bool> {
 
 /// A gpg-agent connection speaking just enough Assuan for our two commands.
 pub struct GpgAgent {
-    stream: UnixStream,
-    reader: BufReader<UnixStream>,
+    stream: Box<dyn Write>,
+    reader: BufReader<Box<dyn Read>>,
+}
+
+/// Where Windows' emulated Assuan socket really listens. GnuPG writes the
+/// socket "file" as the TCP port in ASCII, a newline, then a 16-byte nonce
+/// that the client must send first to prove it may read the user's files.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn parse_emulated_socket(data: &[u8]) -> Result<(u16, [u8; 16])> {
+    let newline = data.iter().position(|&b| b == b'\n').context("malformed gpg-agent socket file")?;
+    let port: u16 = std::str::from_utf8(&data[..newline])
+        .ok()
+        .and_then(|p| p.trim().parse().ok())
+        .context("malformed gpg-agent socket file: no port")?;
+    let nonce: [u8; 16] = data
+        .get(newline + 1..newline + 17)
+        .and_then(|n| n.try_into().ok())
+        .context("malformed gpg-agent socket file: short nonce")?;
+    Ok((port, nonce))
+}
+
+#[cfg(unix)]
+fn open_agent(path: &str) -> Result<(Box<dyn Write>, Box<dyn Read>)> {
+    let stream = std::os::unix::net::UnixStream::connect(path)
+        .with_context(|| format!("no gpg-agent at {path}"))?;
+    Ok((Box::new(stream.try_clone()?), Box::new(stream)))
+}
+
+#[cfg(windows)]
+fn open_agent(path: &str) -> Result<(Box<dyn Write>, Box<dyn Read>)> {
+    let data = fs::read(path).with_context(|| format!("no gpg-agent socket file at {path}"))?;
+    let (port, nonce) = parse_emulated_socket(&data)?;
+    let mut stream = std::net::TcpStream::connect(("127.0.0.1", port))
+        .with_context(|| format!("no gpg-agent on 127.0.0.1:{port}"))?;
+    stream.write_all(&nonce)?;
+    Ok((Box::new(stream.try_clone()?), Box::new(stream)))
 }
 
 impl GpgAgent {
     pub fn connect() -> Result<Self> {
         gpgconf(&["--launch", "gpg-agent"])?;
         let path = gpgconf(&["--list-dirs", "agent-socket"])?;
-        let stream = UnixStream::connect(&path).with_context(|| format!("no gpg-agent at {path}"))?;
-        let mut agent = Self { reader: BufReader::new(stream.try_clone()?), stream };
+        let (stream, reader) = open_agent(&path)?;
+        let mut agent = Self { stream, reader: BufReader::new(reader) };
         agent.response()?;
         Ok(agent)
     }
@@ -250,10 +285,9 @@ impl GpgAgent {
 }
 
 /// Keygrips kleyknox has preset, so `lock` can clear them without the stick.
-/// Lives in $XDG_RUNTIME_DIR (tmpfs): gone at logout, holds nothing secret.
+/// Holds nothing secret (see platform::state_dir).
 fn state_path() -> Result<PathBuf> {
-    let runtime = std::env::var_os("XDG_RUNTIME_DIR").context("XDG_RUNTIME_DIR is not set")?;
-    Ok(PathBuf::from(runtime).join("kleyknox").join("gpg-loaded"))
+    Ok(platform::state_dir()?.join("gpg-loaded"))
 }
 
 pub fn loaded() -> Result<Vec<(String, Vec<String>)>> {
@@ -297,46 +331,10 @@ pub fn lock(name: Option<&str>) -> Result<Vec<String>> {
         for grip in grips {
             agent.clear(grip)?;
         }
-        cancel_expiry(n);
+        platform::cancel_expiry(n);
     }
     save_loaded(&kept)?;
     Ok(gone.into_iter().map(|(n, _)| n).collect())
-}
-
-fn timer_unit(name: &str) -> String {
-    format!("kleyknox-expire-{name}")
-}
-
-/// gpg-agent has no expiry for preset passphrases, so a transient systemd
-/// timer runs `kleyknox lock <name>` when the TTL is up.
-pub fn schedule_expiry(name: &str, secs: u32) -> Result<()> {
-    cancel_expiry(name);
-    let exe = std::env::current_exe()?;
-    let home = gpgconf(&["--list-dirs", "homedir"])?;
-    let status = Command::new("systemd-run")
-        .args(["--user", "--quiet", "--collect"])
-        .arg(format!("--unit={}", timer_unit(name)))
-        .arg(format!("--on-active={secs}s"))
-        // systemd otherwise allows a timer to fire up to a minute late.
-        .arg("--timer-property=AccuracySec=1s")
-        .arg(format!("--setenv=GNUPGHOME={home}"))
-        .arg(exe)
-        .args(["lock", name])
-        .stdout(Stdio::null())
-        .status()
-        .context("cannot run systemd-run")?;
-    if !status.success() {
-        bail!("systemd-run could not schedule the expiry");
-    }
-    Ok(())
-}
-
-fn cancel_expiry(name: &str) {
-    let _ = Command::new("systemctl")
-        .args(["--user", "stop", &format!("{}.timer", timer_unit(name))])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
 }
 
 fn hex(bytes: &[u8]) -> Zeroizing<String> {
@@ -345,4 +343,48 @@ fn hex(bytes: &[u8]) -> Zeroizing<String> {
         out.push_str(&format!("{b:02X}"));
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bundle_round_trip() {
+        let b = Bundle {
+            fingerprint: "ABCD".into(),
+            keygrips: vec!["11".into(), "22".into()],
+            passphrase: Zeroizing::new("s3cret".into()),
+            secret_armor: Zeroizing::new("-----BEGIN PGP PRIVATE KEY BLOCK-----\n".into()),
+        };
+        let d = Bundle::decode(&b.encode()).unwrap();
+        assert_eq!(d.fingerprint, "ABCD");
+        assert_eq!(d.keygrips, ["11", "22"]);
+        assert_eq!(d.passphrase.as_str(), "s3cret");
+        assert!(d.secret_armor.starts_with("-----BEGIN"));
+        assert!(Bundle::decode("not a bundle\n\narmor").is_err());
+    }
+
+    #[test]
+    fn emulated_socket_file() {
+        let mut data = b"49152\n".to_vec();
+        data.extend(0u8..16);
+        let (port, nonce) = parse_emulated_socket(&data).unwrap();
+        assert_eq!(port, 49152);
+        assert_eq!(nonce, core::array::from_fn::<u8, 16, _>(|i| i as u8));
+
+        // A nonce may itself contain newlines: only the first one ends the port.
+        let mut data = b"1234\n".to_vec();
+        data.extend([b'\n'; 16]);
+        assert_eq!(parse_emulated_socket(&data).unwrap().1, [b'\n'; 16]);
+
+        assert!(parse_emulated_socket(b"1234\nshort").is_err());
+        assert!(parse_emulated_socket(b"no newline").is_err());
+        assert!(parse_emulated_socket(b"port\n0123456789abcdef").is_err());
+    }
+
+    #[test]
+    fn hex_is_upper_case() {
+        assert_eq!(hex(&[0x00, 0xab, 0x7f]).as_str(), "00AB7F");
+    }
 }
