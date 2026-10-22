@@ -321,26 +321,29 @@ code, samp { font-family: var(--font-ui-mono); font-size: 0.9em; } /* taste-skil
   .hero h1 { font-size: 10vw; }
   .hero-lead { font-size: 1rem; margin-top: 28px; }
   .hero-stage { position: relative; left: 0; top: auto; margin-top: 48px; height: 520px; }
-  .term { left: 16px; width: 640px; font-size: 14px; }
-  .showcase { display: block; min-height: 0; }
-  .showcase-stage { height: 62svh; }
+  .term-body { white-space: pre-wrap; overflow-wrap: anywhere; padding-bottom: 72px; }
+  .hero-stage { height: auto; padding-bottom: 32px; display: flow-root; }
+  .term { position: relative; top: auto; left: auto; right: auto; width: auto; margin: calc(var(--merlon) * 1.1 + 24px) 16px 0; font-size: 12.5px; }
+  .showcase { display: flex; flex-direction: column; min-height: 0; }
+  .showcase-list { order: -1; }
+  .showcase-stage { height: 62svh; align-self: stretch; }
   .showcase-tower { transform: translateX(-50%); }
-  .file { width: 100%; left: 0; transform: none; font-size: 13px; }
-  .showcase-list { padding: 24px 0 0; }
-  .files { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 6px; }
-  .files li { flex: none; }
+  .file { width: 100%; left: 0; transform: none; font-size: 12.5px; }
+  .showcase-list { padding: 0 0 20px; }
   .showcase-list h2, .files button { font-size: 1.625rem; }
-  .showcase-fact { padding: 16px 0 0; font-size: 1rem; }
+  .showcase-fact { padding: 20px 0 0; font-size: 1rem; max-width: none; }
   .how { grid-template-columns: 1fr; }
   .field { min-height: 0; padding: 28px 20px 40px; }
   .how h2 { order: -2; font-size: 1.5rem; margin-bottom: 16px; }
   .clause { order: -1; margin-top: 0; font-size: 1.5rem; max-width: none; }
   .card { position: relative; top: 0; margin: 32px 0 0; }
   .board { margin: var(--section) 10px 0; grid-template-columns: 1fr 1fr; grid-auto-rows: 28vw; gap: 6px; }
-  .t-head { grid-column: span 2; grid-row: span 2; }
+  .t-head { grid-column: span 2; grid-row: span 1; }
   .t-head h2 { font-size: 9vw; }
-  .t-lock, .t-file { grid-column: span 2; grid-row: span 3; }
-  .t-os, .t-scrypt, .t-status, .t-min, .t-algo { grid-column: span 1; grid-row: span 2; }
+  .t-lock { grid-column: span 2; grid-row: span 3; }
+  .t-file { grid-column: span 2; grid-row: span 2; }
+  .t-scrypt, .t-status, .t-min, .t-algo { grid-column: span 1; grid-row: span 2; }
+  .t-os { grid-column: span 2; grid-row: span 2; }
   .cap { left: 12px; right: 12px; bottom: 12px; font-size: 0.875rem; }
   .cap strong { font-size: 1rem; }
   .lockterm { font-size: 14px; left: 12px; top: 12px; }
@@ -348,7 +351,7 @@ code, samp { font-family: var(--font-ui-mono); font-size: 0.9em; } /* taste-skil
     .figure-ui { font-size: 84px; }
   .status-ui { font-size: 26px; left: 12px; }
   .files-ui { font-size: 26px; }
-  .chip-ui { font-size: 36px; }
+  .chip-ui { font-size: 26px; right: auto; left: 12px; }
   .name { margin: var(--section) 10px 0; padding: 28px 20px; gap: 32px; }
   .name h2 { font-size: 2.5rem; }
   .name-copy > p { font-size: 1.125rem; }
@@ -359,12 +362,14 @@ code, samp { font-family: var(--font-ui-mono); font-size: 0.9em; } /* taste-skil
   .mark-head { aspect-ratio: auto; }
   .sheet-ground { padding: 72px 10px; display: block; }
   .sheet { padding: calc(40px + var(--merlon)) 22px calc(36px + var(--merlon)); }
-  .group dt code { font-size: 0.875rem; }
+  .group dt code { font-size: 0.875rem; overflow-wrap: anywhere; }
+  .install { white-space: pre; overflow-x: auto; word-break: normal; font-size: 0.8125rem; }
   .probe-sentence { font-size: 1.5rem; }
   .probe-sentence input { width: 100%; }
   .foot-grid nav { grid-column: span 6; }
   .blocks { height: 22svh; min-height: 140px; }
-  .blocks span { font-size: 11vw; }
+  .blocks span { font-size: 9vw; }
+  .blocks-tower { display: none; }
 }
 
 /* ---------- dark: follows the device ---------- */
