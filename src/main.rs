@@ -20,8 +20,43 @@ use vault::Kind;
 const COMMENT_PREFIX: &str = "kleyknox:";
 const MIN_PASSPHRASE_CHARS: usize = 12;
 
+/// The KleyKnox key: the 5d logo filled with armor characters (base64 from
+/// sha256("KleyKnox")), upper case on the lit face, lower case in shade.
+/// Keep it identical to the one on the logo page.
+const KEY_ART: &str = r"  KY//KW    VEG590    e6tqxs
+ FK18HTDF  LJXKKPFX  jnxna9kq
+ M7FRIF3Y  02XMICKY  f7arz1u9
+ UQGHKFWW1PISGAzhrsdyvyhyos6z
+ YGODUBG5PHIW0Tdwpp6r7d4jqonf
+ H+UAEBW2ZYM8RO6lastaqx8baygt
+ JR2UFQQYUDK4M4kmpaoh80wzaztt
+   F2KPHOGCN8FAk7dlnuctkqtj
+      4CY7MLGKW+r60ec3j8
+        HLOQEXXdzaojsy
+        Z1PGB6F9czpble
+        FIK/GAMpf4k4kv
+        X0HJH W+ lwi9/
+        UC5E  Sk  6a2z
+        XVPF  Bw  tfip
+        BCHQ  Wn  sfix
+        UPPQ  P5  wvmx
+        A52HH/5rellto/
+        BFHQRN6/jich60
+        O02IQFQlq4suljt9zn7e/e
+        GT8QAVAgho7pulttqu9xud
+        GS75AIN+zvugv5
+        43VDWTPcnhxn2o
+        DTDAZGFdtcsgkyue+3r1jm
+        K4BMMNT3vi904vh+8o+d09
+        AE7AX4Kzfoa0bj
+           SFCFk4==";
+
 #[derive(Parser)]
-#[command(version, about = "SSH and GPG keys kept encrypted on a USB stick, unlocked with one passphrase")]
+#[command(
+    version,
+    about = "SSH and GPG keys kept encrypted on a USB stick, unlocked with one passphrase",
+    before_help = KEY_ART
+)]
 struct Cli {
     /// Vault directory (default: the kleyknox/ directory on the mounted stick)
     #[arg(long, global = true, env = "KLEYKNOX_DIR")]

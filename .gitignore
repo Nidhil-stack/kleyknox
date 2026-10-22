@@ -1,1 +1,3 @@
 target/
+.taste-skill/
+node_modules/

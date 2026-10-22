@@ -1,0 +1,357 @@
+<title>Torre KleyKnox</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=JetBrains+Mono:wght@400;600;800&display=swap">
+<style>
+  /* Layout: one concept, five refinements. Each card: dark and light tile, inverse app icon, size ladder, lockup. */
+  :root {
+    --bg: #EEF1F4; --fg: #1E232B; --muted: #5B6676; --line: #D3D9E0; --card: #FFFFFF; --accent: #1A8A95;
+    --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #171B21; --fg: #C9D1DB; --muted: #8590A0; --line: #2E3540; --card: #1E232B; --accent: #2BB3C0; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --bg: #171B21; --fg: #C9D1DB; --muted: #8590A0; --line: #2E3540; --card: #1E232B; --accent: #2BB3C0; color-scheme: dark; }
+
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-display); line-height: 1.5; }
+  .wrap {
+    max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 40px 64px;
+  }
+  header { display: flex; flex-direction: column; gap: 8px; max-width: 65ch; }
+  h1 { margin: 0; font-weight: 800; font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.02em; text-wrap: balance; }
+  header p { margin: 0; color: var(--muted); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .c-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .c-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
+  .c-head .num { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+  .badge { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; color: var(--accent); }
+  .c-head p { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 13.5px; }
+
+  .dark { background: #1E232B; --main: #2BB3C0; --shade: #1C8C97; --metal: #C9D1DB; --ink: #1E232B; }
+  .light { background: #F7F9FB; box-shadow: inset 0 0 0 1px #D3D9E0; --main: #1A8A95; --shade: #126A72; --metal: #5B6676; --ink: #F7F9FB; }
+  .inverse { background: #2BB3C0; --main: #1E232B; --shade: #11151A; --metal: #1E232B; --ink: #2BB3C0; }
+
+  .stage { display: grid; grid-template-columns: 1fr 1fr 0.8fr; gap: 8px; align-items: stretch; }
+  .tile { border-radius: 10px; display: grid; place-items: center; aspect-ratio: 1; max-width: 100%; }
+  .tile svg { width: 72%; height: auto; }
+  .tile.inverse { border-radius: 22%; align-self: center; }
+  .hero { border-radius: 10px; display: grid; place-items: center; padding: 12px; }
+  .hero svg { width: min(100%, 420px); height: auto; }
+
+  .sizes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .strip { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 10px; }
+  .strip svg { display: block; }
+  .lbl { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+  .lockup { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-radius: 10px; overflow-x: auto; }
+  .lockup svg { width: 40px; height: 40px; flex: none; }
+  .lockup .word { font-weight: 800; font-size: 24px; letter-spacing: -0.015em; white-space: nowrap; color: var(--metal); }
+  .lockup .word b { color: var(--main); font-weight: 800; }
+
+  footer { color: var(--muted); font-size: 13px; max-width: 65ch; }
+
+  .grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); align-items: start; }
+  .ascii { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 18px; align-items: start; }
+  .term { border-radius: 14px; padding: 18px 20px; overflow-x: auto; font-family: var(--font-mono); font-size: 13px; line-height: 1.15; }
+  .term pre { margin: 0; font: inherit; white-space: pre; }
+  .term pre + pre { margin-top: 14px; }
+  .term .k { color: var(--main); }
+  .term .s { color: var(--shade); }
+  .term .w { color: var(--metal); }
+  .term .m { color: var(--metal); }
+  .term .p { color: var(--metal); opacity: 0.7; }
+  .ascii-note h2 { margin: 0 0 6px; font-size: 17px; font-weight: 600; }
+  .ascii-note p { margin: 0 0 8px; color: var(--muted); font-size: 13.5px; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Window cut out of the body as true negative space, one bar left standing. -->
+    <mask id="cut-a" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"></rect>
+      <path d="M29.5 39 V31.5 a2.5 2.5 0 0 1 5 0 V39 Z" fill="#000"></path>
+      <rect x="31.4" y="28" width="1.2" height="12" fill="#fff"></rect>
+    </mask>
+    <mask id="cut-b" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"></rect>
+      <path d="M28.5 40 V31.5 a3.5 3.5 0 0 1 7 0 V40 Z" fill="#000"></path>
+      <rect x="30.2" y="27" width="1.1" height="14" fill="#fff"></rect>
+      <rect x="32.7" y="27" width="1.1" height="14" fill="#fff"></rect>
+    </mask>
+    <mask id="cut-e" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"></rect>
+      <path d="M29.5 40 V31 a2.5 2.5 0 0 1 5 0 V40 Z" fill="#000"></path>
+    </mask>
+
+    <!-- 5a Pulita: equal battlements, a corbel taper into a slim shaft, rounded foot, two teeth -->
+    <symbol id="t-a" viewBox="0 0 64 64">
+      <g fill="var(--main)" mask="url(#cut-a)">
+        <rect x="18" y="6" width="7" height="8" rx="1.4"></rect>
+        <rect x="28.5" y="6" width="7" height="8" rx="1.4"></rect>
+        <rect x="39" y="6" width="7" height="8" rx="1.4"></rect>
+        <rect x="18" y="12" width="28" height="7" rx="1.4"></rect>
+        <path d="M18 18 H46 L39 24 H25 Z"></path>
+        <rect x="25" y="22" width="14" height="36" rx="3"></rect>
+        <rect x="37" y="43" width="10" height="4.5" rx="1.4"></rect>
+        <rect x="37" y="50.5" width="7" height="4.5" rx="1.4"></rect>
+      </g>
+    </symbol>
+
+    <!-- 5b Merli tondi: softer battlements, taller arched window with two bars -->
+    <symbol id="t-b" viewBox="0 0 64 64">
+      <g fill="var(--main)" mask="url(#cut-b)">
+        <rect x="18" y="5" width="7" height="10" rx="3.5"></rect>
+        <rect x="28.5" y="5" width="7" height="10" rx="3.5"></rect>
+        <rect x="39" y="5" width="7" height="10" rx="3.5"></rect>
+        <rect x="18" y="12" width="28" height="7" rx="1.4"></rect>
+        <path d="M18 18 H46 L40 24 H24 Z"></path>
+        <rect x="24" y="22" width="16" height="36" rx="3.5"></rect>
+        <rect x="38" y="44" width="9.5" height="4.5" rx="2.25"></rect>
+        <rect x="38" y="51" width="6.5" height="4.5" rx="2.25"></rect>
+      </g>
+    </symbol>
+
+    <!-- 5c Due toni: the tower in steel, the key's teeth in cyan -->
+    <symbol id="t-c" viewBox="0 0 64 64">
+      <g fill="var(--metal)" mask="url(#cut-a)">
+        <rect x="18" y="6" width="7" height="8" rx="1.4"></rect>
+        <rect x="28.5" y="6" width="7" height="8" rx="1.4"></rect>
+        <rect x="39" y="6" width="7" height="8" rx="1.4"></rect>
+        <rect x="18" y="12" width="28" height="7" rx="1.4"></rect>
+        <path d="M18 18 H46 L39 24 H25 Z"></path>
+        <rect x="25" y="22" width="14" height="36" rx="3"></rect>
+      </g>
+      <rect x="37" y="43" width="10" height="4.5" rx="1.4" fill="var(--main)"></rect>
+      <rect x="37" y="50.5" width="7" height="4.5" rx="1.4" fill="var(--main)"></rect>
+    </symbol>
+
+    <!-- 5d Volume: 5a with its right face in a deeper tone, so the tower stands in light; two equal teeth -->
+    <symbol id="t-d" viewBox="0 0 64 64">
+      <g mask="url(#cut-a)">
+        <g fill="var(--main)">
+          <rect x="18" y="6" width="7" height="8" rx="1.4"></rect>
+          <rect x="28.5" y="6" width="7" height="8" rx="1.4"></rect>
+          <rect x="39" y="6" width="7" height="8" rx="1.4"></rect>
+          <rect x="18" y="12" width="28" height="7" rx="1.4"></rect>
+          <path d="M18 18 H46 L39 24 H25 Z"></path>
+          <rect x="25" y="22" width="14" height="36" rx="3"></rect>
+        </g>
+        <g fill="var(--shade)">
+          <path d="M39 6 H44.6 a1.4 1.4 0 0 1 1.4 1.4 V12 H39 Z"></path>
+          <path d="M32 12 H44.6 a1.4 1.4 0 0 1 1.4 1.4 V18 L39 24 H32 Z"></path>
+          <path d="M32 22 H39 V55 a3 3 0 0 1 -3 3 H32 Z"></path>
+        </g>
+      </g>
+      <rect x="37" y="43" width="10" height="4.5" rx="1.4" fill="var(--shade)"></rect>
+      <rect x="37" y="50.5" width="10" height="4.5" rx="1.4" fill="var(--shade)"></rect>
+    </symbol>
+
+    <!-- 5e Favicon: chunkier, no bars, made to survive 16 px -->
+    <symbol id="t-e" viewBox="0 0 64 64">
+      <g fill="var(--main)" mask="url(#cut-e)">
+        <rect x="16" y="5" width="9" height="9" rx="1.5"></rect>
+        <rect x="27.5" y="5" width="9" height="9" rx="1.5"></rect>
+        <rect x="39" y="5" width="9" height="9" rx="1.5"></rect>
+        <rect x="16" y="12" width="32" height="8" rx="1.5"></rect>
+        <path d="M16 19 H48 L41 25 H23 Z"></path>
+        <rect x="23" y="23" width="18" height="36" rx="3.5"></rect>
+        <rect x="39" y="42" width="11" height="6" rx="1.5"></rect>
+        <rect x="39" y="51" width="8" height="6" rx="1.5"></rect>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>Torre KleyKnox</h1>
+    <p>Il logo di default ora è la 5d fatta con i caratteri dell'armor, come la chiave ASCII. Sotto, per confronto, la 5d piena e la chiave per il terminale.</p>
+  </header>
+
+  <main class="grid" id="variants"></main>
+
+  <section class="ascii" aria-labelledby="ascii-h">
+    <div class="ascii-note">
+      <h2 id="ascii-h">La chiave in ASCII</h2>
+      <p>La 5d riempita con i caratteri di un armor PGP: lettere, cifre, <code>+</code> e <code>/</code>, e il piede che chiude con <code>==</code> come l'ultima riga di un blocco cifrato.</p>
+      <p>Le maiuscole stanno sulla faccia in luce, le minuscole su quella in ombra: il volume della 5d si legge anche senza colori. I caratteri vengono da <code>sha256("KleyKnox")</code>, quindi il disegno è sempre lo stesso.</p>
+    </div>
+    <div class="term dark" role="img" aria-label="Chiave KleyKnox in ASCII"><pre class="key"></pre><pre><span class="p">$</span> <span class="m">kleyknox unlock</span></pre></div>
+    <div class="term light" role="img" aria-label="Chiave KleyKnox in ASCII, su chiaro"><pre class="key"></pre></div>
+  </section>
+
+  <footer>Dimmi cosa cambiare nella torre o nella chiave ASCII.</footer>
+</div>
+
+<script>
+  const KEY = [
+    "  KY//KW    VEG590    e6tqxs",
+    " FK18HTDF  LJXKKPFX  jnxna9kq",
+    " M7FRIF3Y  02XMICKY  f7arz1u9",
+    " UQGHKFWW1PISGAzhrsdyvyhyos6z",
+    " YGODUBG5PHIW0Tdwpp6r7d4jqonf",
+    " H+UAEBW2ZYM8RO6lastaqx8baygt",
+    " JR2UFQQYUDK4M4kmpaoh80wzaztt",
+    "   F2KPHOGCN8FAk7dlnuctkqtj",
+    "      4CY7MLGKW+r60ec3j8",
+    "        HLOQEXXdzaojsy",
+    "        Z1PGB6F9czpble",
+    "        FIK/GAMpf4k4kv",
+    "        X0HJH W+ lwi9/",
+    "        UC5E  Sk  6a2z",
+    "        XVPF  Bw  tfip",
+    "        BCHQ  Wn  sfix",
+    "        UPPQ  P5  wvmx",
+    "        A52HH/5rellto/",
+    "        BFHQRN6/jich60",
+    "        O02IQFQlq4suljt9zn7e/e",
+    "        GT8QAVAgho7pulttqu9xud",
+    "        GS75AIN+zvugv5",
+    "        43VDWTPcnhxn2o",
+    "        DTDAZGFdtcsgkyue+3r1jm",
+    "        K4BMMNT3vi904vh+8o+d09",
+    "        AE7AX4Kzfoa0bj",
+    "           SFCFk4==",
+  ];
+  // Which face each character sits on: X lit, x in shade (the 5d volume).
+  const FACE = [
+    "  XXXXXX    XXXXXX    xxxxxx",
+    " XXXXXXXX  XXXXXXXX  xxxxxxxx",
+    " XXXXXXXX  XXXXXXXX  xxxxxxxx",
+    " XXXXXXXXXXXXXXxxxxxxxxxxxxxx",
+    " XXXXXXXXXXXXXXxxxxxxxxxxxxxx",
+    " XXXXXXXXXXXXXXxxxxxxxxxxxxxx",
+    " XXXXXXXXXXXXXXxxxxxxxxxxxxxx",
+    "   XXXXXXXXXXXXxxxxxxxxxxxx",
+    "      XXXXXXXXXxxxxxxxxx",
+    "        XXXXXXXxxxxxxx",
+    "        XXXXXXXxxxxxxx",
+    "        XXXXXXXxxxxxxx",
+    "        XXXXX Xx xxxxx",
+    "        XXXX  Xx  xxxx",
+    "        XXXX  Xx  xxxx",
+    "        XXXX  Xx  xxxx",
+    "        XXXX  Xx  xxxx",
+    "        XXXXXXXxxxxxxx",
+    "        XXXXXXXxxxxxxx",
+    "        XXXXXXXxxxxxxxxxxxxxxx",
+    "        XXXXXXXxxxxxxxxxxxxxxx",
+    "        XXXXXXXxxxxxxx",
+    "        XXXXXXXxxxxxxx",
+    "        XXXXXXXxxxxxxxxxxxxxxx",
+    "        XXXXXXXxxxxxxxxxxxxxxx",
+    "        XXXXXXXxxxxxxx",
+    "           XXXXxxxx",
+  ];
+
+  // The default logo: the solid 5d, with rows of armor characters carved out of it
+  // in the tile's background colour. Few, large characters (about 10 across the
+  // tower) so they can be read on a tile; under ~48 px only the silhouette counts.
+  const ARMOR = KEY.join("").replace(/\s/g, "");
+  // The 5d silhouette as geometry (same shapes as #sil-d), to test where a whole glyph fits.
+  const inRect = (x, y, rx, ry, w, h, r) => {
+    if (x < rx || x > rx + w || y < ry || y > ry + h) return false;
+    const cx = Math.min(Math.max(x, rx + r), rx + w - r), cy = Math.min(Math.max(y, ry + r), ry + h - r);
+    return (x - cx) ** 2 + (y - cy) ** 2 <= r * r + 1e-6;
+  };
+  const inTrap = (x, y) => y >= 18 && y <= 24 && x >= 18 + (7 * (y - 18)) / 6 && x <= 46 - (7 * (y - 18)) / 6;
+  const solid = (x, y) =>
+    inRect(x, y, 18, 6, 7, 8, 1.4) || inRect(x, y, 28.5, 6, 7, 8, 1.4) || inRect(x, y, 39, 6, 7, 8, 1.4) ||
+    inRect(x, y, 18, 12, 28, 7, 1.4) || inTrap(x, y) || inRect(x, y, 25, 22, 14, 36, 3) ||
+    inRect(x, y, 37, 43, 10, 4.5, 1.4) || inRect(x, y, 37, 50.5, 10, 4.5, 1.4);
+  // The arched window (bar included): a glyph may not touch it.
+  const inWindow = (x, y) =>
+    x >= 29.5 && x <= 34.5 && y <= 39 && (y >= 31.5 || (x - 32) ** 2 + (y - 31.5) ** 2 <= 2.5 ** 2);
+  // A glyph is placed only if its whole box (ascenders to descenders, plus a margin) is solid.
+  const SIZE = 3.3, GW = SIZE * 0.6, ASC = SIZE * 0.78, DESC = SIZE * 0.24, PAD = 0.25;
+  const fits = (x, base) => {
+    const x0 = x - GW / 2 - PAD, x1 = x + GW / 2 + PAD, y0 = base - ASC - PAD, y1 = base + DESC + PAD;
+    for (let i = 0; i <= 6; i++) for (let j = 0; j <= 6; j++) {
+      const x = x0 + ((x1 - x0) * i) / 6, y = y0 + ((y1 - y0) * j) / 6;
+      if (!solid(x, y) || inWindow(x, y)) return false;
+    }
+    return true;
+  };
+  // Columns centred on the axis (x = 32): two whole glyphs per battlement, four on the shaft.
+  const COL = 2.6, ROW = 4.4;
+  const xs = Array.from({ length: 12 }, (_, i) => 32 + (i - 6 + 0.5) * COL);
+  // One row in the battlements, then rows from the top of the band down to the foot.
+  const bases = [6.4 + ASC + PAD, ...Array.from({ length: 11 }, (_, r) => 12.2 + ASC + PAD + r * ROW)];
+  // The teeth are 7.5 units apart, not a multiple of ROW: the second one gets its own
+  // row, on the part that sticks out of the shaft only.
+  const lines = [...bases.map((base) => ({ base, from: 0 })), { base: 50.8 + ASC + PAD, from: 39 }];
+  let k = 0;
+  const glyphs = lines.flatMap(({ base, from }) =>
+    xs.filter((x) => x - GW / 2 >= from && fits(x, base)).map((x) => {
+      const ch = ARMOR[k++ % ARMOR.length];
+      // Upper case on the lit face, lower case in shade, as in the ASCII key.
+      const t = x < 32 ? ch.toUpperCase() : ch.toLowerCase();
+      return `<text x="${x.toFixed(2)}" y="${base.toFixed(2)}">${t}</text>`;
+    })
+  ).join("");
+  document.querySelector("svg defs").insertAdjacentHTML("beforeend", `
+    <!-- The 5d silhouette (window cut out, bar kept): the characters are clipped to it, so the edges stay crisp. -->
+    <mask id="sil-d" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <g fill="#fff">
+        <rect x="18" y="6" width="7" height="8" rx="1.4"></rect>
+        <rect x="28.5" y="6" width="7" height="8" rx="1.4"></rect>
+        <rect x="39" y="6" width="7" height="8" rx="1.4"></rect>
+        <rect x="18" y="12" width="28" height="7" rx="1.4"></rect>
+        <path d="M18 18 H46 L39 24 H25 Z"></path>
+        <rect x="25" y="22" width="14" height="36" rx="3"></rect>
+        <rect x="37" y="43" width="10" height="4.5" rx="1.4"></rect>
+        <rect x="37" y="50.5" width="10" height="4.5" rx="1.4"></rect>
+      </g>
+      <path d="M29.5 39 V31.5 a2.5 2.5 0 0 1 5 0 V39 Z" fill="#000"></path>
+      <rect x="31.4" y="28" width="1.2" height="12" fill="#fff"></rect>
+    </mask>
+    <symbol id="t-armor" viewBox="0 0 64 64">
+      <use href="#t-d"></use>
+      <g font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-weight="700" font-size="3.3"
+         text-anchor="middle" fill="var(--ink)" fill-opacity="0.5" mask="url(#sil-d)">${glyphs}</g>
+    </symbol>`);
+
+  const variants = [
+    { id: "t-armor", name: "5d Armor", rec: true, hero: true,
+      idea: "Il logo di default: la 5d piena, con righe di caratteri dell'armor scavate dentro. Pochi caratteri e grandi, così si leggono; sotto i 48 px resta la sagoma della torre." },
+    { id: "t-d", name: "5d Volume", hero: true,
+      idea: "La faccia destra in un tono più profondo, come se la luce arrivasse da sinistra. Ora i due denti della chiave sono lunghi uguali." },
+  ];
+
+  const use = (id, size) => `<svg width="${size}" height="${size}" viewBox="0 0 64 64" role="img" aria-label="Logo KleyKnox"><use href="#${id}"></use></svg>`;
+
+  document.getElementById("variants").innerHTML = variants.map((v, i) => `
+    <article class="card" aria-labelledby="v${i}">
+      <div class="c-head">
+        <h2 id="v${i}">${v.name}</h2>
+        ${v.rec ? '<span class="badge">consigliata</span>' : ""}
+        <p>${v.idea}</p>
+      </div>
+      ${v.hero ? `<div class="hero dark">${use(v.id, 420)}</div>` : ""}
+      <div class="stage">
+        <div class="tile dark">${use(v.id, 140)}</div>
+        <div class="tile light">${use(v.id, 140)}</div>
+        <div class="tile inverse">${use(v.id, 110)}</div>
+      </div>
+      <div class="sizes">
+        <div class="strip dark">${use(v.id, 48)}${use(v.id, 32)}${use(v.id, 16)}</div>
+        <div class="strip light">${use(v.id, 48)}${use(v.id, 32)}${use(v.id, 16)}</div>
+        <span class="lbl">48 · 32 · 16</span>
+      </div>
+      <div class="lockup dark">${use(v.id, 40)}<span class="word">Kley<b>Knox</b></span></div>
+    </article>`).join("");
+
+  // The key in ASCII, kept identical to the one in `kleyknox --help`.
+  const tone = (row, col) => (FACE[row][col] === "X" ? "k" : "s");
+  const esc = (c) => (c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "&" ? "&amp;" : c);
+  const keyHtml = KEY.map((line, row) =>
+    [...line].map((c, col) => (c === " " ? " " : `<span class="${tone(row, col)}">${esc(c)}</span>`)).join("")
+  ).join("\n");
+  document.querySelectorAll("pre.key").forEach((el) => (el.innerHTML = keyHtml));
+</script>
